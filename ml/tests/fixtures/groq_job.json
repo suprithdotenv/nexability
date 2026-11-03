@@ -1,0 +1,11 @@
+{
+  "job_title": "Java Developer Intern",
+  "role_summary": null,
+  "requirement_enrichments": [
+    {
+      "original_requirement": "Java",
+      "normalized_requirement": "Java programming",
+      "normalized_skill": "java"
+    }
+  ]
+}

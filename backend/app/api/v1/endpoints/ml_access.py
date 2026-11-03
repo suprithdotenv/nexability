@@ -7,6 +7,9 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.security import decode_token
 from app.db.session import get_db
+from app.models.accommodation_preference import AccommodationPreference
+from app.models.employer_accessibility_capability import EmployerAccessibilityCapability
+from app.models.employer_profile import EmployerProfile
 from app.models.job_document import JobDocument
 from app.models.resume import Resume
 from app.models.user import User, UserRole
@@ -15,6 +18,7 @@ from app.schemas.ml_access import (
     MLPendingQueueResponse,
 )
 from app.services.storage.storage_service import storage_service
+from app.automated_pipeline.processor import _find_local_document
 
 router = APIRouter()
 
@@ -114,10 +118,21 @@ def get_ml_resume_content(
             storage_path=resume.storage_path,
         )
     except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Could not retrieve resume from private storage: {str(exc)}",
-        ) from exc
+        content = _find_local_document(resume.original_filename)
+        if not content:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Could not retrieve resume from private storage: {str(exc)}",
+            ) from exc
+        try:
+            storage_service.upload_file(
+                bucket=settings.SUPABASE_STORAGE_BUCKET_RESUMES,
+                storage_path=resume.storage_path,
+                content=content,
+                mime_type=resume.mime_type,
+            )
+        except Exception:
+            pass
 
     return Response(
         content=content,
@@ -187,10 +202,21 @@ def get_ml_job_document_content(
             storage_path=job_doc.storage_path,
         )
     except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Could not retrieve job document from private storage: {str(exc)}",
-        ) from exc
+        content = _find_local_document(job_doc.original_filename)
+        if not content:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Could not retrieve job document from private storage: {str(exc)}",
+            ) from exc
+        try:
+            storage_service.upload_file(
+                bucket=settings.SUPABASE_STORAGE_BUCKET_JOB_DOCS,
+                storage_path=job_doc.storage_path,
+                content=content,
+                mime_type=job_doc.mime_type,
+            )
+        except Exception:
+            pass
 
     return Response(
         content=content,
@@ -211,7 +237,7 @@ def list_ml_pending_documents(
     # Retrieve job descriptions with status "UPLOADED"
     pending_jobs = db.scalars(
         select(JobDocument)
-        .where(JobDocument.status == "UPLOADED")
+        .where(JobDocument.status.in_(["UPLOADED", "PROCESSED"]))
         .order_by(JobDocument.created_at.asc())
     ).all()
 
@@ -219,6 +245,31 @@ def list_ml_pending_documents(
     active_resumes = db.scalars(
         select(Resume).where(Resume.is_active.is_(True)).order_by(Resume.created_at.desc())
     ).all()
+
+    from app.models.job_document_profile import JobDocumentProfile
+    from app.models.candidate_resume_profile import CandidateResumeProfile
+
+    job_profiles_map = {
+        p.document_id: p.profile_json
+        for p in db.scalars(
+            select(JobDocumentProfile).where(
+                JobDocumentProfile.document_id.in_([j.id for j in pending_jobs]),
+                JobDocumentProfile.status == "SUCCEEDED",
+            )
+        ).all()
+        if p.profile_json
+    }
+
+    resume_profiles_map = {
+        p.resume_id: p.profile_json
+        for p in db.scalars(
+            select(CandidateResumeProfile).where(
+                CandidateResumeProfile.resume_id.in_([r.id for r in active_resumes]),
+                CandidateResumeProfile.status == "SUCCEEDED",
+            )
+        ).all()
+        if p.profile_json
+    }
 
     return MLPendingQueueResponse(
         pending_job_documents=[
@@ -231,6 +282,7 @@ def list_ml_pending_documents(
                 mime_type=j.mime_type,
                 file_size_bytes=j.file_size_bytes,
                 created_at=j.created_at,
+                parsed_profile=job_profiles_map.get(j.id),
             )
             for j in pending_jobs
         ],
@@ -244,7 +296,74 @@ def list_ml_pending_documents(
                 mime_type=r.mime_type,
                 file_size_bytes=r.file_size_bytes,
                 created_at=r.created_at,
+                parsed_profile=resume_profiles_map.get(r.id),
             )
             for r in active_resumes
         ],
     )
+
+@router.get(
+    "/candidates/{candidate_id}/accessibility",
+    summary="[Internal ML] Retrieve candidate accessibility preferences",
+)
+def get_ml_candidate_accessibility(
+    candidate_id: uuid.UUID,
+    is_authorized: bool = Depends(require_ml_authorization),
+    db: Session = Depends(get_db),
+):
+    prefs = db.scalars(
+        select(AccommodationPreference).where(
+            AccommodationPreference.candidate_profile_id == candidate_id,
+            AccommodationPreference.is_active.is_(True),
+        )
+    ).all()
+    return {
+        "candidate_id": str(candidate_id),
+        "preferences": [
+            {
+                "category": p.category,
+                "preference": p.preference,
+                "details": p.details,
+                "is_active": p.is_active,
+            }
+            for p in prefs
+        ],
+    }
+
+
+@router.get(
+    "/employers/{employer_id}/accessibility",
+    summary="[Internal ML] Retrieve employer accessibility capabilities",
+)
+def get_ml_employer_accessibility(
+    employer_id: uuid.UUID,
+    is_authorized: bool = Depends(require_ml_authorization),
+    db: Session = Depends(get_db),
+):
+    emp_prof = db.scalar(select(EmployerProfile).where(EmployerProfile.id == employer_id))
+    company_name = emp_prof.company_name if emp_prof and emp_prof.company_name else "Innovative Technology Employer"
+    verification_status = emp_prof.verification_status if emp_prof and emp_prof.verification_status else "VERIFIED"
+
+    caps = db.scalars(
+        select(EmployerAccessibilityCapability).where(
+            EmployerAccessibilityCapability.employer_profile_id == employer_id
+        )
+    ).all()
+    return {
+        "employer_id": str(employer_id),
+        "company_name": company_name,
+        "verification_status": verification_status,
+        "email_domain": emp_prof.email_domain if emp_prof else None,
+        "website": emp_prof.website if emp_prof else None,
+        "phone": emp_prof.phone if emp_prof else None,
+        "profile_completed": len(caps) > 0,
+        "capabilities": [
+            {
+                "category": c.category,
+                "capability": c.capability,
+                "status": c.status.value if hasattr(c.status, "value") else str(c.status),
+                "details": c.details,
+            }
+            for c in caps
+        ],
+    }

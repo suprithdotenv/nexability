@@ -4,6 +4,7 @@ from app.schemas.auth import (
     EmployerEmailCheckResponse,
 )
 import uuid
+from pydantic import BaseModel
 from app.core.config import settings
 from app.api.dependencies import get_current_user
 
@@ -706,6 +707,80 @@ def google_login(
         )
     )
 
+    db.commit()
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    }
+
+
+
+class TestQuickLoginRequest(BaseModel):
+    email: str
+    role: str = "CANDIDATE"
+    full_name: str = "Test User"
+    company_name: str = "Test Company"
+
+
+@router.post("/test/quick-login", response_model=TokenResponse)
+def test_quick_login(
+    payload: TestQuickLoginRequest,
+    db: Session = Depends(get_db),
+):
+    email = payload.email.strip().lower()
+    user = db.scalar(select(User).where(User.email == email))
+    role_enum = UserRole.EMPLOYER if payload.role.upper() == "EMPLOYER" else UserRole.CANDIDATE
+
+    if user is None:
+        user = User(
+            email=email,
+            password_hash=hash_password("TestPassword123!"),
+            role=role_enum,
+            is_active=True,
+            email_verified_at=datetime.now(timezone.utc),
+        )
+        db.add(user)
+        db.flush()
+
+        if role_enum == UserRole.CANDIDATE:
+            profile = CandidateProfile(
+                user_id=user.id,
+                full_name=payload.full_name,
+                phone="+1234567890",
+            )
+            db.add(profile)
+        else:
+            domain = email.split("@")[-1] if "@" in email else "example.com"
+            profile = EmployerProfile(
+                user_id=user.id,
+                full_name=payload.full_name,
+                company_name=payload.company_name,
+                email_domain=domain,
+                website=f"https://www.{domain}",
+                phone="+1987654321",
+                verification_status="VERIFIED",
+            )
+            db.add(profile)
+        db.commit()
+        db.refresh(user)
+
+    access_token = create_access_token(
+        user_id=str(user.id),
+        role=user.role.value,
+    )
+    refresh_token = create_refresh_token(
+        user_id=str(user.id),
+    )
+    db.add(
+        RefreshToken(
+            user_id=user.id,
+            token_hash=hash_refresh_token(refresh_token),
+            expires_at=get_refresh_token_expiry(),
+        )
+    )
     db.commit()
 
     return {

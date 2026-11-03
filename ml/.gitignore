@@ -1,0 +1,10 @@
+.env
+postgres-test.env
+.venv/
+.venv312/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.cache/
+model_cache/
+models/
