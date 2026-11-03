@@ -85,10 +85,49 @@ function RegisterPage() {
       }
 
       const res = await authService.sendOtp(email.trim(), otpPurpose);
-      setStatusMessage(res?.message || "Verification code sent to your email.");
+
+      // Conforms to live OpenAPI schema: { message: string, expires_in: number | null }
+      // Do not invent challenge_id or response fields
+      const message = res?.message || "Verification code sent to your email.";
+      const statusText = res?.expires_in
+        ? `${message} (Code expires in ${res.expires_in} seconds)`
+        : message;
+
+      setStatusMessage(statusText);
       setStep(2);
     } catch (err) {
-      setError(err.message || "Failed to send verification code. Please try again.");
+      const status = err.status || null;
+      if (err.isProxyError || status === 502 || status === 504) {
+        setError(
+          err.message ||
+            "Proxy error: Unable to connect to backend server. Please verify proxy target is active."
+        );
+      } else if (err.isNetworkError || status === 0) {
+        setError(
+          err.message ||
+            "Network error: Unable to connect to server. Please check your internet connection."
+        );
+      } else if (status === 404) {
+        setError(
+          err.message ||
+            "Not Found (404): The requested authentication endpoint could not be found."
+        );
+      } else if (status === 422) {
+        setError(
+          err.message ||
+            "Validation Error (422): Invalid request data. Please check your email and input."
+        );
+      } else if (status === 429) {
+        setError(
+          err.message ||
+            "Rate Limited (429): Too many requests. Please wait a moment before trying again."
+        );
+      } else {
+        setError(
+          err.message ||
+            "Failed to send verification code. Please try again."
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -110,13 +149,44 @@ function RegisterPage() {
       const res = await authService.verifyOtp(email.trim(), otpPurpose, otp.trim());
       if (res.verified && res.verification_ticket) {
         setVerificationTicket(res.verification_ticket);
-        setStatusMessage("Email verified successfully. Please complete your profile.");
+        setStatusMessage(res.message || "Email verified successfully. Please complete your profile.");
         setStep(3);
       } else {
         setError(res.message || "Verification failed. Please check the code and try again.");
       }
     } catch (err) {
-      setError(err.message || "Invalid verification code.");
+      const status = err.status || null;
+      if (err.isProxyError || status === 502 || status === 504) {
+        setError(
+          err.message ||
+            "Proxy error: Unable to connect to backend server. Please verify proxy target is active."
+        );
+      } else if (err.isNetworkError || status === 0) {
+        setError(
+          err.message ||
+            "Network error: Unable to connect to server. Please check your internet connection."
+        );
+      } else if (status === 404) {
+        setError(
+          err.message ||
+            "Not Found (404): The verification endpoint could not be found."
+        );
+      } else if (status === 422) {
+        setError(
+          err.message ||
+            "Validation Error (422): Invalid verification data. Please check the code."
+        );
+      } else if (status === 429) {
+        setError(
+          err.message ||
+            "Rate Limited (429): Too many attempts. Please wait a moment before trying again."
+        );
+      } else {
+        setError(
+          err.message ||
+            "Invalid verification code. Please try again."
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -179,7 +249,38 @@ function RegisterPage() {
         setStep(5);
       }
     } catch (err) {
-      setError(err.message || "Registration failed. Please check the provided information.");
+      const status = err.status || null;
+      if (err.isProxyError || status === 502 || status === 504) {
+        setError(
+          err.message ||
+            "Proxy error: Unable to connect to backend server. Please verify proxy target is active."
+        );
+      } else if (err.isNetworkError || status === 0) {
+        setError(
+          err.message ||
+            "Network error: Unable to connect to server. Please check your internet connection."
+        );
+      } else if (status === 404) {
+        setError(
+          err.message ||
+            "Not Found (404): Registration endpoint could not be found."
+        );
+      } else if (status === 422) {
+        setError(
+          err.message ||
+            "Validation Error (422): Please check your registration details."
+        );
+      } else if (status === 429) {
+        setError(
+          err.message ||
+            "Rate Limited (429): Too many registration attempts. Please try again later."
+        );
+      } else {
+        setError(
+          err.message ||
+            "Registration failed. Please check the provided information."
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -426,15 +527,28 @@ function RegisterPage() {
               />
             </div>
 
-            <button className="btn btn-primary" type="submit" disabled={isLoading}>
-              {isLoading ? "Creating Account..." : "Complete Registration"}
-            </button>
+            <div className="auth-button-group">
+              <button className="btn btn-primary" type="submit" disabled={isLoading}>
+                {isLoading ? "Creating Account..." : "Complete Registration"}
+              </button>
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={() => { setError(""); setStatusMessage(""); setStep(2); }}
+                disabled={isLoading}
+              >
+                &larr; Back
+              </button>
+            </div>
           </form>
         )}
 
         {/* STEP 4: Candidate Onboarding - Optional Disability Declaration */}
         {step === 4 && role === "candidate" && (
-          <DisabilityDeclaration onComplete={handleDeclarationComplete} />
+          <DisabilityDeclaration
+            onComplete={handleDeclarationComplete}
+            onBack={() => { setError(""); setStatusMessage(""); setStep(3); }}
+          />
         )}
 
         {/* STEP 5: Registration Success */}
@@ -445,15 +559,12 @@ function RegisterPage() {
               Welcome, <strong>{registeredUser?.full_name || fullName}</strong>! Your
               account has been registered as <em>{role}</em>.
             </p>
-            {registeredUser?.verification_status && (
-              <p>Status: {registeredUser.verification_status}</p>
-            )}
 
             {role === "candidate" && (
               <div className="candidate-onboarding-summary">
                 {declarationResult?.declared ? (
                   <p className="declaration-confirmed-badge">
-                    &#10003; Voluntary disability self-declaration recorded.
+                    &#10003; Voluntary disability self-declaration preference noted {declarationResult?.backendPending ? "(Awaiting backend storage deployment)" : "and recorded"}.
                   </p>
                 ) : (
                   <p className="declaration-skipped-badge">

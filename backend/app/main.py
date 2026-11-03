@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
+from employer_feature import employer_feature_router
+from declaration_feature import declaration_router
 
 
 app = FastAPI(
@@ -21,12 +23,25 @@ app.include_router(
     prefix="/api/v1",
 )
 
+app.include_router(
+    employer_feature_router,
+    prefix="/api/v1",
+)
+
+app.include_router(
+    declaration_router,
+    prefix="/api/v1",
+)
+
 
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"^https?://.*$",
     allow_origins=[
-        "http://localhost:5500",
+        "http://localhost:5000",
+        "http://127.0.0.1:5000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
         "http://127.0.0.1:5500",
         "http://localhost:8080",
         "http://127.0.0.1:8080",

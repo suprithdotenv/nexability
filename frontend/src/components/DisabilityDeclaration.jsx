@@ -1,15 +1,17 @@
 import { useId, useState } from "react";
-import { candidateService } from "../api/index.js";
+import { candidateService, tokenStore } from "../api/index.js";
 
 /**
  * DisabilityDeclaration Component
  * Optional candidate self-declaration step adhering to NexAbility accessibility standards.
  *
  * @param {Object} props
- * @param {Function} props.onComplete Callback when user completes or skips (passes { declared, skipped })
+ * @param {Function} [props.onComplete] Callback when user completes or skips (passes { declared, skipped })
+ * @param {Function} [props.onBack] Callback to navigate back to previous step
  * @param {boolean} [props.isStandalone] Whether rendered standalone or in onboarding flow
  */
-export function DisabilityDeclaration({ onComplete, isStandalone = false }) {
+export function DisabilityDeclaration({ onComplete, onBack, isStandalone = false }) {
+  // Functional Requirement 1: Checkbox must be unchecked by default
   const [isDeclared, setIsDeclared] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -20,12 +22,13 @@ export function DisabilityDeclaration({ onComplete, isStandalone = false }) {
   const titleId = useId();
   const descId = useId();
 
+  // Functional Requirement 3: Candidate can continue after voluntarily selecting it
   async function handleContinue(event) {
     event.preventDefault();
     setError("");
     setStatusMessage("");
 
-    // If candidate did NOT check the box, proceed without sending any declaration request
+    // If candidate did NOT check the box, proceed without recording declaration
     if (!isDeclared) {
       if (onComplete) {
         onComplete({ declared: false, skipped: false });
@@ -33,44 +36,52 @@ export function DisabilityDeclaration({ onComplete, isStandalone = false }) {
       return;
     }
 
-    // Candidate voluntarily selected the checkbox - save declaration
+    // Candidate voluntarily checked the box: handle according to backend support
     setIsLoading(true);
     try {
-      await candidateService.saveDeclaration({
-        accepted: true,
-        declaration_version: "v1",
-      });
-      setStatusMessage("Your voluntary declaration has been recorded.");
-      if (onComplete) {
-        onComplete({ declared: true, skipped: false });
-      }
-    } catch (err) {
-      // The backend endpoint /candidates/me/declaration may not be deployed yet
-      if (err.status === 404 || err.status === 0) {
-        const pendingMsg =
-          "Note: The candidate declaration backend endpoint (/candidates/me/declaration) is pending server deployment. Your voluntary preference has been noted.";
-        setStatusMessage(pendingMsg);
-        // Do not block onboarding progression even if backend is pending
+      if (candidateService.isDeclarationSupported && tokenStore.getAccessToken()) {
+        await candidateService.saveDeclaration({
+          accepted: true,
+          declaration_version: "v1",
+        });
+        setStatusMessage("Your voluntary declaration has been recorded.");
+        if (onComplete) {
+          onComplete({ declared: true, skipped: false });
+        }
+      } else {
+        // Backend endpoint is awaiting deployment in backend API router
+        setStatusMessage(
+          "Your preference has been noted for this session. Permanent database persistence for disability self-declaration is awaiting backend endpoint deployment."
+        );
         if (onComplete) {
           onComplete({ declared: true, skipped: false, backendPending: true });
         }
-      } else {
-        setError(
-          err.message ||
-            "Unable to save your declaration at this time. You can manage this anytime in profile settings."
-        );
       }
+    } catch (err) {
+      setError(
+        err.message ||
+          "Unable to record declaration at this time. You can manage this anytime in profile settings."
+      );
     } finally {
       setIsLoading(false);
     }
   }
 
+  // Functional Requirement 4: Candidate can skip without any restriction
   function handleSkip() {
     setError("");
     setStatusMessage("");
     // Do NOT send any API request when skipping
     if (onComplete) {
       onComplete({ declared: false, skipped: true });
+    }
+  }
+
+  function handleBack() {
+    setError("");
+    setStatusMessage("");
+    if (onBack) {
+      onBack();
     }
   }
 
@@ -100,6 +111,7 @@ export function DisabilityDeclaration({ onComplete, isStandalone = false }) {
             className="declaration-checkbox"
             checked={isDeclared}
             onChange={(e) => {
+              // Functional Requirement 2: Candidate can select or deselect it
               setIsDeclared(e.target.checked);
               setError("");
             }}
@@ -111,11 +123,18 @@ export function DisabilityDeclaration({ onComplete, isStandalone = false }) {
           </label>
         </div>
 
+        {/* Functional Requirement 7: Do not collect medical diagnoses */}
         <p id={noteId} className="declaration-note">
           Your declaration is completely optional. You do not need to provide a medical
           diagnosis or upload medical documents. You can skip this step and manage your
           declaration later through your profile settings.
         </p>
+
+        {!candidateService.isDeclarationSupported && (
+          <p className="declaration-backend-note" role="note" style={{ fontSize: "0.875rem", color: "var(--color-warning)", marginTop: "0.5rem" }}>
+            <strong>Backend Notice:</strong> Permanent database storage for candidate declaration (<code>/api/v1/candidates/me/declaration</code>) is awaiting server deployment. Your voluntary preference is noted for this session.
+          </p>
+        )}
 
         {/* Privacy & Safeguard Pillars */}
         <ul className="declaration-safeguards" aria-label="Privacy and inclusion guarantees">
@@ -170,6 +189,17 @@ export function DisabilityDeclaration({ onComplete, isStandalone = false }) {
             disabled={isLoading}
           >
             Skip for now
+          </button>
+        )}
+
+        {onBack && (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={handleBack}
+            disabled={isLoading}
+          >
+            &larr; Back
           </button>
         )}
       </div>
