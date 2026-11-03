@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta, timezone
-
 import hashlib
-from datetime import timedelta
+import uuid
 
 import jwt
 
@@ -45,6 +44,7 @@ def create_refresh_token(user_id: str) -> str:
 
     payload = {
         "sub": user_id,
+        "jti": str(uuid.uuid4()),
         "type": "refresh",
         "iat": now,
         "exp": now + timedelta(
@@ -68,7 +68,7 @@ def decode_token(token: str) -> dict:
 
 
 def hash_refresh_token(token: str) -> str:
-    return hashlib.sha256(token.encode()).hexdigest()
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 def get_refresh_token_expiry() -> datetime:

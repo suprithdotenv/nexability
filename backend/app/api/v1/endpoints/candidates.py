@@ -175,6 +175,14 @@ async def upload_candidate_resume(
         db.add(resume_record)
         db.commit()
         db.refresh(resume_record)
+
+        # Automated pgvector pipeline: extract text, chunk, generate 768-d embeddings, and save to Neon
+        try:
+            from app.automated_pipeline.processor import process_candidate_resume
+            process_candidate_resume(resume_record.id, db=db, content=content)
+        except Exception as exc:
+            import logging
+            logging.getLogger("api.candidates").error("Automated pipeline resume processing error: %s", exc)
     except Exception:
         db.rollback()
         # Clean up storage so orphaned files are not left behind

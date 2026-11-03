@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     # Internal ML team integration key
     INTERNAL_ML_API_KEY: str = "ml-internal-secret-token"
 
+    # ML matching service URL (standalone FastAPI ML service)
+    ML_SERVICE_URL: str = "http://localhost:8001"
+    PROFESSIONAL_MATCH_THRESHOLD: float = 60.0
+
     app_name: str = "NexAbility API"
 
     model_config = SettingsConfigDict(

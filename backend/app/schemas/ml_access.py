@@ -1,3 +1,4 @@
+from typing import Any
 from datetime import datetime
 from uuid import UUID
 
@@ -14,6 +15,7 @@ class MLDocumentMetadataResponse(BaseModel):
     file_size_bytes: int
     signed_download_url: str | None = None
     created_at: datetime
+    parsed_profile: dict[str, Any] | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

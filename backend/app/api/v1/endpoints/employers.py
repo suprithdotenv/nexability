@@ -180,6 +180,14 @@ async def upload_job_document(
         db.add(doc_record)
         db.commit()
         db.refresh(doc_record)
+
+        # Automated pgvector pipeline: extract text, chunk, generate 768-d embeddings, and save to Neon
+        try:
+            from app.automated_pipeline.processor import process_job_document
+            process_job_document(doc_record.id, db=db, content=content)
+        except Exception as exc:
+            import logging
+            logging.getLogger("api.employers").error("Automated pipeline job processing error: %s", exc)
     except Exception:
         db.rollback()
         # Clean up storage so orphaned files are not left behind
