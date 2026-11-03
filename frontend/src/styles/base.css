@@ -195,6 +195,27 @@ a:hover {
   border-color: var(--color-accent-strong);
 }
 
+/* Ghost button: text-link style, no fill, for tertiary actions like Back */
+.btn-ghost {
+  color: var(--color-secondary);
+  background: transparent;
+  border-color: transparent;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.btn-ghost:hover {
+  color: var(--color-primary);
+  background: var(--color-accent-soft);
+  border-color: transparent;
+  text-decoration: none;
+}
+
+.btn-ghost:focus-visible {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: var(--focus-offset);
+}
+
 .field-label {
   display: block;
   margin-bottom: var(--space-2);

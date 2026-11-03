@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth.js";
 
 function SiteHeader() {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const navId = useId();
   const toggleRef = useRef(null);
   const navRef = useRef(null);
@@ -19,6 +20,16 @@ function SiteHeader() {
   }
 
   const closeMenu = () => setMenuOpen(false);
+
+  async function handleLogout() {
+    closeMenu();
+    await logout();
+    navigate("/", { replace: true });
+  }
+
+  const userRole = (user?.role || "").toLowerCase();
+  const dashboardPath =
+    userRole === "employer" ? "/employer/dashboard" : "/candidate/dashboard";
 
   useEffect(() => {
     if (!menuOpen) {
@@ -108,18 +119,39 @@ function SiteHeader() {
           aria-label="Primary"
         >
           <div className="site-nav-links">
-            <Link to="/register?role=candidate" onClick={closeMenu}>
-              For Candidates
-            </Link>
-            <Link to="/register?role=employer" onClick={closeMenu}>
-              For Employers
-            </Link>
-            <a href="/#about" onClick={closeMenu}>
-              About
-            </a>
-            <a href="/#accessibility" onClick={closeMenu}>
-              Accessibility
-            </a>
+            {user ? (
+              <>
+                <Link to={dashboardPath} onClick={closeMenu}>
+                  Dashboard
+                </Link>
+                {userRole === "candidate" && (
+                  <Link to="/candidate/settings" onClick={closeMenu}>
+                    Settings
+                  </Link>
+                )}
+                <a href="/#about" onClick={closeMenu}>
+                  About
+                </a>
+                <a href="/#accessibility" onClick={closeMenu}>
+                  Accessibility
+                </a>
+              </>
+            ) : (
+              <>
+                <Link to="/register?role=candidate" onClick={closeMenu}>
+                  For Candidates
+                </Link>
+                <Link to="/register?role=employer" onClick={closeMenu}>
+                  For Employers
+                </Link>
+                <a href="/#about" onClick={closeMenu}>
+                  About
+                </a>
+                <a href="/#accessibility" onClick={closeMenu}>
+                  Accessibility
+                </a>
+              </>
+            )}
           </div>
 
           <div className="header-actions">
@@ -127,18 +159,15 @@ function SiteHeader() {
               <>
                 <Link
                   className="btn btn-secondary header-btn"
-                  to="/candidate/settings"
+                  to={dashboardPath}
                   onClick={closeMenu}
                 >
-                  Settings
+                  {userRole === "employer" ? "Employer Portal" : "My Dashboard"}
                 </Link>
                 <button
                   className="btn btn-primary header-btn"
                   type="button"
-                  onClick={() => {
-                    logout();
-                    closeMenu();
-                  }}
+                  onClick={handleLogout}
                 >
                   Sign Out
                 </button>

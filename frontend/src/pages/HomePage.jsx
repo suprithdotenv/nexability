@@ -1,6 +1,12 @@
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/useAuth.js";
 
 function HomePage() {
+  const { user } = useAuth();
+  const userRole = (user?.role || "").toLowerCase();
+  const dashboardPath =
+    userRole === "employer" ? "/employer/dashboard" : "/candidate/dashboard";
+
   return (
     <main id="main-content" tabIndex="-1">
       {/* 1. HERO SECTION */}
@@ -9,16 +15,30 @@ function HomePage() {
           <p className="eyebrow">ACCESSIBLE EMPLOYMENT FOR EVERYONE</p>
           <h1 id="hero-title">Your ability deserves to be seen.</h1>
           <p className="hero-description">
-            Discover opportunities, showcase your strengths, and connect with
-            employers who value inclusive talent.
+            Discover opportunities, showcase your strengths, and connect with employers who value inclusive talent.
           </p>
           <div className="hero-actions">
-            <Link className="btn btn-primary" to="/register?role=candidate">
-              Find Opportunities
-            </Link>
-            <Link className="btn btn-secondary" to="/register?role=employer">
-              Hire Inclusively
-            </Link>
+            {user ? (
+              <>
+                <Link className="btn btn-primary" to={dashboardPath}>
+                  Go to {userRole === "employer" ? "Employer Portal" : "My Dashboard"}
+                </Link>
+                {userRole === "candidate" && (
+                  <Link className="btn btn-secondary" to="/candidate/settings">
+                    Settings
+                  </Link>
+                )}
+              </>
+            ) : (
+              <>
+                <Link className="btn btn-primary" to="/register?role=candidate">
+                  Find Opportunities
+                </Link>
+                <Link className="btn btn-secondary" to="/register?role=employer">
+                  Hire Inclusively
+                </Link>
+              </>
+            )}
           </div>
           <div className="hero-highlights" aria-label="Key platform qualities">
             <span className="hero-pill">✓ Accessible Profiles</span>
@@ -58,146 +78,114 @@ function HomePage() {
               <span className="visual-match">Matched on Ability</span>
               <span className="visual-status status-cyan">★ Equal Opportunity</span>
             </div>
-
-            <div className="visual-dot" />
           </div>
         </div>
       </section>
 
-      {/* 3. ABOUT SECTION */}
-      <section
-        className="content-section about-section"
-        id="about"
-        tabIndex="-1"
-        aria-labelledby="about-title"
-      >
+      {/* 3. VALUE PROPOSITIONS */}
+      <section className="content-section" id="about" tabIndex="-1" aria-labelledby="why-title">
         <div className="section-header">
-          <p className="eyebrow">ABOUT NEXABILITY</p>
-          <h2 id="about-title">A better way to connect talent and opportunity.</h2>
+          <p className="eyebrow">BUILT FOR INCLUSION</p>
+          <h2 id="why-title">Why NexAbility is different.</h2>
           <p className="section-intro">
-            NexAbility connects job seekers with inclusive employers through
-            accessible digital experiences.
+            Traditional hiring platforms create unintended barriers. We designed NexAbility from
+            the ground up to be accessible, equitable, and dignified.
           </p>
         </div>
 
-        <div className="about-pillars">
-          <div className="pillar-card">
-            <div className="pillar-icon" aria-hidden="true">♿</div>
-            <h3>Universal Accessibility</h3>
+        <div className="feature-grid">
+          <article className="feature-card">
+            <span className="feature-icon" aria-hidden="true">
+              ♿
+            </span>
+            <h3>Accessibility by Default</h3>
             <p>
-              Designed from the ground up to exceed accessibility standards,
-              ensuring every candidate can navigate and apply with dignity.
+              Full keyboard navigability, high-contrast typography, screen-reader compatibility,
+              and customizable viewing settings built into every screen.
             </p>
-          </div>
-          <div className="pillar-card">
-            <div className="pillar-icon" aria-hidden="true">🎯</div>
-            <h3>Strengths-Based Matching</h3>
+          </article>
+
+          <article className="feature-card">
+            <span className="feature-icon" aria-hidden="true">
+              🛡️
+            </span>
+            <h3>Voluntary &amp; Private</h3>
             <p>
-              Focusing on your real abilities, unique perspectives, and practical
-              skills to match you with teams that empower your growth.
+              Candidates decide what to share, when to share it, and with whom. Self-declaration is
+              always optional and completely independent of job applications.
             </p>
-          </div>
-          <div className="pillar-card">
-            <div className="pillar-icon" aria-hidden="true">🤝</div>
-            <h3>Committed Employers</h3>
+          </article>
+
+          <article className="feature-card">
+            <span className="feature-icon" aria-hidden="true">
+              🤝
+            </span>
+            <h3>Verified Inclusive Employers</h3>
             <p>
-              Partnering only with organizations genuinely dedicated to inclusive
-              workplace culture, accommodations, and equal career advancement.
+              Every employer on NexAbility agrees to our accessibility pledge and commits to
+              workplace accommodations and barrier-free interview processes.
             </p>
-          </div>
+          </article>
+
+          <article className="feature-card">
+            <span className="feature-icon" aria-hidden="true">
+              ✨
+            </span>
+            <h3>Skill-First Matching</h3>
+            <p>
+              Focus on capabilities, problem-solving, and potential. We remove the cognitive biases
+              and artificial barriers of traditional applicant tracking systems.
+            </p>
+          </article>
         </div>
       </section>
 
-      {/* 4. HOW NEXABILITY WORKS */}
-      <section
-        className="content-section how-section"
-        id="how-it-works"
-        tabIndex="-1"
-        aria-labelledby="how-title"
-      >
+      {/* 4. DUAL AUDIENCE SPLIT */}
+      <section className="content-section surface-muted" aria-labelledby="paths-title">
         <div className="section-header">
-          <p className="eyebrow">HOW IT WORKS</p>
-          <h2 id="how-title">How NexAbility works</h2>
+          <p className="eyebrow">YOUR PATHWAY</p>
+          <h2 id="paths-title">Built for both sides of the table.</h2>
           <p className="section-intro">
-            A simple path from profile to placement.
+            Whether you are looking for your next opportunity or seeking to build a more diverse,
+            innovative team, NexAbility is your platform.
           </p>
         </div>
 
-        <ol className="step-grid">
-          <li className="step-card">
-            <div className="step-badge">
-              <span className="step-number" aria-hidden="true">1</span>
-              <span className="step-label">Step One</span>
-            </div>
-            <h3>Create Your Profile</h3>
-            <p>Build an accessible profile and showcase your strengths.</p>
-          </li>
-
-          <li className="step-card">
-            <div className="step-badge">
-              <span className="step-number" aria-hidden="true">2</span>
-              <span className="step-label">Step Two</span>
-            </div>
-            <h3>Discover Opportunities</h3>
-            <p>Explore opportunities that match your abilities.</p>
-          </li>
-
-          <li className="step-card">
-            <div className="step-badge">
-              <span className="step-number" aria-hidden="true">3</span>
-              <span className="step-label">Step Three</span>
-            </div>
-            <h3>Get Hired</h3>
-            <p>Connect with employers who value inclusive talent.</p>
-          </li>
-        </ol>
-      </section>
-
-      {/* 5. CANDIDATE AND EMPLOYER SECTIONS */}
-      <section
-        className="content-section audience-section"
-        id="audiences"
-        aria-labelledby="audience-title"
-      >
-        <div className="section-header">
-          <p className="eyebrow">BUILT FOR BOTH SIDES OF EMPLOYMENT</p>
-          <h2 id="audience-title">Opportunities for Candidates. Solutions for Employers.</h2>
-        </div>
-
-        <div className="audience-grid">
-          {/* Candidate Card */}
-          <article className="audience-card candidate-card" aria-labelledby="candidates-title">
-            <div className="audience-badge">FOR JOB SEEKERS</div>
-            <h3 id="candidates-title">For Candidates</h3>
-            <p className="audience-description">
-              Find opportunities, build your profile and explore inclusive
-              careers.
+        <div className="dual-grid">
+          <article className="audience-card audience-candidate">
+            <span className="audience-badge">FOR JOB SEEKERS</span>
+            <h3>Find work where your abilities are valued.</h3>
+            <p>
+              Create an accessible profile, showcase your unique talents, and connect with
+              employers who understand the value of universal design and workplace flexibility.
             </p>
-            <ul className="audience-features" aria-label="Candidate advantages">
-              <li>Showcase your unique strengths without technical hurdles</li>
-              <li>Filter opportunities by workplace accommodations and accessibility</li>
-              <li>Connect directly with verified equal-opportunity employers</li>
+            <ul className="audience-benefits">
+              <li>✓ Free forever for all job seekers</li>
+              <li>✓ Screen-reader optimized application workflows</li>
+              <li>✓ Direct access to inclusive hiring teams</li>
+              <li>✓ No medical documentation or proof required</li>
             </ul>
-            <div className="audience-cta">
+            <div className="audience-action">
               <Link className="btn btn-primary" to="/register?role=candidate">
-                Find Opportunities
+                Create Candidate Account
               </Link>
             </div>
           </article>
 
-          {/* Employer Card */}
-          <article className="audience-card employer-card" aria-labelledby="employers-title">
-            <div className="audience-badge employer-badge">FOR INCLUSIVE EMPLOYERS</div>
-            <h3 id="employers-title">For Employers</h3>
-            <p className="audience-description">
-              Discover diverse talent and create accessible hiring experiences.
+          <article className="audience-card audience-employer">
+            <span className="audience-badge badge-accent">FOR EMPLOYERS</span>
+            <h3>Access a broader pool of exceptional talent.</h3>
+            <p>
+              Connect with skilled professionals with disabilities, neurodivergent thinkers, and
+              diverse problem solvers who bring transformative value to your organization.
             </p>
-            <ul className="audience-features" aria-label="Employer advantages">
-              <li>Access an under-leveraged pool of high-performing candidates</li>
-              <li>Eliminate digital barriers in your recruitment and interview process</li>
-              <li>Foster an authentic culture of inclusion and workplace belonging</li>
+            <ul className="audience-benefits">
+              <li>✓ Corporate email domain verification</li>
+              <li>✓ Accessibility-screened job postings</li>
+              <li>✓ Inclusion guidance and accommodation templates</li>
+              <li>✓ Meaningful reporting on inclusive talent reach</li>
             </ul>
-            <div className="audience-cta">
+            <div className="audience-action">
               <Link className="btn btn-accent" to="/register?role=employer">
                 Hire Inclusively
               </Link>
@@ -206,7 +194,7 @@ function HomePage() {
         </div>
       </section>
 
-      {/* 8. ACCESSIBILITY SECTION */}
+      {/* 5. ACCESSIBILITY SECTION */}
       <section
         className="content-section accessibility-section"
         id="accessibility"

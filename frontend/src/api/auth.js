@@ -1,6 +1,7 @@
 /**
  * NexAbility Authentication API Service
  * Integrates strictly with confirmed live endpoints from OpenAPI schema.
+ * Supports token storage, session refresh, role-based profile loading, and clean logout.
  */
 
 import { apiClient, tokenStore } from "./client.js";
@@ -8,43 +9,43 @@ import { apiClient, tokenStore } from "./client.js";
 export const authService = {
   /**
    * Screen employer email domain for corporate eligibility
-   * Endpoint: POST /auth/employer/email/check
+   * Endpoint: POST /api/v1/auth/employer/email/check
    * Body: { email: string }
    * Returns: { eligible: boolean, reason: string, domain: string | null }
    */
   async checkEmployerEmail(email) {
-    return apiClient.post("/auth/employer/email/check", { email });
+    return apiClient.post("/api/v1/auth/employer/email/check", { email });
   },
 
   /**
    * Send one-time passcode for registration or password reset
-   * Endpoint: POST /auth/otp/send
+   * Endpoint: POST /api/v1/auth/otp/send
    * Body: { email: string, purpose: "CANDIDATE_REGISTRATION" | "EMPLOYER_REGISTRATION" | "PASSWORD_RESET" }
    * Returns: { message: string, expires_in: number | null }
    */
   async sendOtp(email, purpose) {
-    return apiClient.post("/auth/otp/send", { email, purpose });
+    return apiClient.post("/api/v1/auth/otp/send", { email, purpose });
   },
 
   /**
    * Verify one-time passcode to receive a temporary verification ticket
    * Note: The verification_ticket is a proof token for registration/reset, NOT an access token.
-   * Endpoint: POST /auth/otp/verify
+   * Endpoint: POST /api/v1/auth/otp/verify
    * Body: { email: string, purpose: "CANDIDATE_REGISTRATION" | "EMPLOYER_REGISTRATION" | "PASSWORD_RESET", otp: string }
    * Returns: { verified: boolean, message: string, verification_ticket: string, expires_in: number }
    */
   async verifyOtp(email, purpose, otp) {
-    return apiClient.post("/auth/otp/verify", { email, purpose, otp });
+    return apiClient.post("/api/v1/auth/otp/verify", { email, purpose, otp });
   },
 
   /**
    * Register a new candidate using the verified ticket
-   * Endpoint: POST /auth/candidate/register
+   * Endpoint: POST /api/v1/auth/candidate/register
    * Body: { full_name, email, password, phone, verification_ticket }
    * Returns: { id: string, email: string, full_name: string, role: string, message: string }
    */
   async registerCandidate({ full_name, email, password, phone = null, verification_ticket }) {
-    return apiClient.post("/auth/candidate/register", {
+    return apiClient.post("/api/v1/auth/candidate/register", {
       full_name,
       email,
       password,
@@ -55,7 +56,7 @@ export const authService = {
 
   /**
    * Register a new employer using the verified ticket
-   * Endpoint: POST /auth/employer/register
+   * Endpoint: POST /api/v1/auth/employer/register
    * Body: { full_name, company_name, email, password, phone, website, verification_ticket }
    * Returns: { id, email, full_name, company_name, role, verification_status, message }
    */
@@ -68,7 +69,7 @@ export const authService = {
     website = null,
     verification_ticket,
   }) {
-    return apiClient.post("/auth/employer/register", {
+    return apiClient.post("/api/v1/auth/employer/register", {
       full_name,
       company_name,
       email,
@@ -81,12 +82,12 @@ export const authService = {
 
   /**
    * Sign in with email and password
-   * Endpoint: POST /auth/login
+   * Endpoint: POST /api/v1/auth/login
    * Body: { email: string, password: string }
    * Returns: { access_token: string, refresh_token: string, token_type: string, expires_in: number }
    */
   async login(email, password) {
-    const data = await apiClient.post("/auth/login", { email, password });
+    const data = await apiClient.post("/api/v1/auth/login", { email, password });
     if (data?.access_token) {
       tokenStore.setAccessToken(data.access_token);
     }
@@ -94,12 +95,15 @@ export const authService = {
       // In-memory only, never persisted to localStorage
       tokenStore.setRefreshToken(data.refresh_token);
     }
-    return data;
+
+    // Retrieve enriched user profile with backend authoritative role
+    const user = await this.getCurrentUser();
+    return { tokens: data, user };
   },
 
   /**
    * Refresh session using refresh token or session cookie
-   * Endpoint: POST /auth/refresh
+   * Endpoint: POST /api/v1/auth/refresh
    * Body: { refresh_token: string }
    * Returns: { access_token: string, refresh_token: string, token_type: string, expires_in: number }
    */
@@ -109,7 +113,7 @@ export const authService = {
       throw new Error("No refresh token available in current session.");
     }
 
-    const data = await apiClient.post("/auth/refresh", { refresh_token: refreshToken });
+    const data = await apiClient.post("/api/v1/auth/refresh", { refresh_token: refreshToken });
     if (data?.access_token) {
       tokenStore.setAccessToken(data.access_token);
     }
@@ -121,7 +125,7 @@ export const authService = {
 
   /**
    * Logout current session
-   * Endpoint: POST /auth/logout
+   * Endpoint: POST /api/v1/auth/logout
    * Body: { refresh_token: string }
    * Returns: { message: string }
    */
@@ -129,7 +133,7 @@ export const authService = {
     const refreshToken = tokenStore.getRefreshToken() || "";
     try {
       if (refreshToken) {
-        await apiClient.post("/auth/logout", { refresh_token: refreshToken });
+        await apiClient.post("/api/v1/auth/logout", { refresh_token: refreshToken });
       }
     } finally {
       tokenStore.clearTokens();
@@ -137,28 +141,100 @@ export const authService = {
   },
 
   /**
-   * Get current authenticated user profile
-   * Endpoint: GET /auth/me
+   * Get current authenticated user account and enrich with role profile
+   * Endpoint: GET /api/v1/auth/me
    * Requires: Bearer access token
    */
   async getCurrentUser() {
-    return apiClient.get("/auth/me", { requiresAuth: true });
+    const account = await apiClient.get("/api/v1/auth/me", { requiresAuth: true });
+    if (!account) {
+      throw new Error("Unable to retrieve user account.");
+    }
+
+    // Normalize authoritative backend role to lowercase ("candidate" | "employer" | "admin")
+    const rawRole = typeof account.role === "string" ? account.role : "";
+    const normalizedRole = rawRole.toLowerCase();
+
+    let enrichedUser = {
+      id: account.id,
+      email: account.email,
+      role: normalizedRole, // Normalized to lowercase for robust client-side role matching
+      rawRole,              // Preserved original backend enum ("CANDIDATE" | "EMPLOYER")
+      is_active: account.is_active,
+      full_name: "",
+      company_name: "",
+      email_domain: "",
+      website: null,
+      phone: null,
+      verification_status: null,
+    };
+
+    // Enrich based on role
+    if (normalizedRole === "candidate") {
+      try {
+        const candidateProfile = await this.getCandidateProfile();
+        if (candidateProfile) {
+          enrichedUser = {
+            ...enrichedUser,
+            full_name: candidateProfile.full_name || "",
+            phone: candidateProfile.phone || null,
+          };
+        }
+      } catch {
+        // Fall back to base account if candidate profile is pending
+      }
+    } else if (normalizedRole === "employer") {
+      try {
+        const employerProfile = await this.getEmployerProfile();
+        if (employerProfile) {
+          enrichedUser = {
+            ...enrichedUser,
+            full_name: employerProfile.full_name || "",
+            company_name: employerProfile.company_name || "",
+            email_domain: employerProfile.email_domain || "",
+            website: employerProfile.website || null,
+            phone: employerProfile.phone || null,
+            verification_status: employerProfile.verification_status || "PENDING",
+          };
+        }
+      } catch {
+        enrichedUser.verification_status = "PENDING";
+      }
+    }
+
+    return enrichedUser;
+  },
+
+  /**
+   * Retrieve candidate profile
+   * Endpoint: GET /api/v1/candidates/me
+   */
+  async getCandidateProfile() {
+    return apiClient.get("/api/v1/candidates/me", { requiresAuth: true });
+  },
+
+  /**
+   * Retrieve employer profile
+   * Endpoint: GET /api/v1/employers/me
+   */
+  async getEmployerProfile() {
+    return apiClient.get("/api/v1/employers/me", { requiresAuth: true });
   },
 
   /**
    * Request password reset OTP
-   * Endpoint: POST /auth/password/forgot
+   * Endpoint: POST /api/v1/auth/password/forgot
    */
   async forgotPassword(email) {
-    return apiClient.post("/auth/password/forgot", { email });
+    return apiClient.post("/api/v1/auth/password/forgot", { email });
   },
 
   /**
    * Reset password with verification ticket
-   * Endpoint: POST /auth/password/reset
+   * Endpoint: POST /api/v1/auth/password/reset
    */
   async resetPassword({ email, verification_ticket, new_password }) {
-    return apiClient.post("/auth/password/reset", {
+    return apiClient.post("/api/v1/auth/password/reset", {
       email,
       verification_ticket,
       new_password,
@@ -167,9 +243,12 @@ export const authService = {
 
   /**
    * Google Authentication Status
-   * Note: The live backend OpenAPI schema does not define `/api/v1/auth/google`.
+   * Note: The live backend OpenAPI schema defines `/api/v1/auth/google`.
    */
-  isGoogleAuthAvailable: false,
+  isGoogleAuthAvailable: true,
 };
+
+// Register refresh handler with client token store
+tokenStore.registerRefreshHandler(() => authService.refreshSession());
 
 export default authService;
