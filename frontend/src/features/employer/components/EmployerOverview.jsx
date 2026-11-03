@@ -7,80 +7,41 @@ function EmployerOverview({ onNavigateTab }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    loadDashboard();
-  }, []);
-
-  async function loadDashboard() {
-    setIsLoading(true);
-    setError("");
-    try {
-      const data = await employerService.getDashboard();
-      setDashboardData(data);
-    } catch (err) {
-      setError(err?.message || "Failed to load dashboard metrics.");
-    } finally {
-      setIsLoading(false);
+    let ignore = false;
+    async function fetchDashboard() {
+      try {
+        const data = await employerService.getDashboard();
+        if (!ignore) {
+          setDashboardData(data);
+          setError("");
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(err?.message || "Failed to load dashboard metrics.");
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
     }
-  }
+    fetchDashboard();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   if (isLoading) {
     return <p>Loading employer dashboard overview...</p>;
   }
 
   const stats = dashboardData?.stats || {};
-  const profile = dashboardData?.profile || {};
   const recentJobs = dashboardData?.recent_jobs || [];
   const recentApps = dashboardData?.recent_applications || [];
   const recentAccs = dashboardData?.recent_accommodations || [];
 
-  const verificationStatus = (stats.verification_status || "PENDING").toUpperCase();
-  const isVerified = verificationStatus === "VERIFIED";
-  const isPending = verificationStatus === "PENDING";
-  const isRejected = verificationStatus === "REJECTED";
-
   return (
     <div className="employer-overview">
-      {/* Verification Banner */}
-      <section
-        className={`verification-banner ${
-          isVerified
-            ? "verification-verified"
-            : isRejected
-              ? "verification-rejected"
-              : "verification-pending"
-        }`}
-        role="status"
-        aria-live="polite"
-        style={{ marginBottom: "1.5rem" }}
-      >
-        <div className="verification-badge-row">
-          <span
-            className={`status-badge ${
-              isVerified
-                ? "status-active"
-                : isRejected
-                  ? "status-error"
-                  : "status-warning"
-            }`}
-          >
-            Status: {verificationStatus}
-          </span>
-        </div>
-        <h2 className="verification-heading" style={{ fontSize: "1.2rem", margin: "0.4rem 0" }}>
-          {isVerified && "Verified Inclusive Employer"}
-          {isPending && "Organization Verification Pending Approval"}
-          {isRejected && "Verification Requires Attention"}
-        </h2>
-        <p className="verification-text" style={{ fontSize: "0.9rem" }}>
-          {isVerified &&
-            "Your company is verified on the NexAbility registry. Candidates can see your accessibility badge across all postings."}
-          {isPending &&
-            `Your organization domain (${profile.email_domain || "on file"}) is being reviewed. You can actively manage jobs, review applications, and confirm accommodations.`}
-          {isRejected &&
-            "Verification requires additional proof. Please contact support@nexability.org."}
-        </p>
-      </section>
-
       {error && (
         <div className="alert alert-error" role="alert" style={{ marginBottom: "1.5rem" }}>
           {error}

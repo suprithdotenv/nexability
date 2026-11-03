@@ -242,6 +242,26 @@ export const authService = {
   },
 
   /**
+   * Google Authentication
+   * Endpoint: POST /api/v1/auth/google
+   * Body: { credential: string }
+   */
+  async loginWithGoogle(credential) {
+    if (!credential) {
+      throw new Error("Google credential is required for sign-in.");
+    }
+    const data = await apiClient.post("/api/v1/auth/google", { credential });
+    if (data?.access_token) {
+      tokenStore.setAccessToken(data.access_token);
+    }
+    if (data?.refresh_token) {
+      tokenStore.setRefreshToken(data.refresh_token);
+    }
+    const user = await this.getCurrentUser();
+    return { tokens: data, user };
+  },
+
+  /**
    * Google Authentication Status
    * Note: The live backend OpenAPI schema defines `/api/v1/auth/google`.
    */

@@ -24,28 +24,47 @@ function AccommodationInbox() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    loadRequests();
+    let ignore = false;
+    async function fetchRequests() {
+      try {
+        const data = await employerService.getAccommodations({ status: filterStatus });
+        if (!ignore) {
+          setRequests(Array.isArray(data) ? data : []);
+          setError("");
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(err?.message || "Failed to load accommodation requests.");
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    }
+    fetchRequests();
+    return () => {
+      ignore = true;
+    };
   }, [filterStatus]);
 
-  async function loadRequests() {
-    setIsLoading(true);
-    setError("");
-    try {
-      const data = await employerService.getAccommodations({ status: filterStatus });
-      setRequests(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(err?.message || "Failed to load accommodation requests.");
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  function handleOpenRespond(req) {
+  async function handleOpenRespond(req) {
     setSelectedReq(req);
     setResponseStatus(req.status === "PENDING" ? "APPROVED" : req.status);
     setResponseMessage(req.response_message || "");
     setError("");
     setSuccessMessage("");
+    try {
+      const detail = await employerService.getAccommodation(req.id);
+      if (detail) {
+        setSelectedReq(detail);
+        if (detail.response_message) {
+          setResponseMessage(detail.response_message);
+        }
+      }
+    } catch {
+      // Fallback to list item data
+    }
   }
 
   async function handleSendResponse(e) {

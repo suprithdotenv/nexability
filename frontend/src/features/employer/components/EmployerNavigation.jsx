@@ -2,6 +2,7 @@ function EmployerNavigation({ activeTab, onSelectTab, counts = {} }) {
   const tabs = [
     { id: "overview", label: "Overview", icon: "📊" },
     { id: "jobs", label: "Job Postings", icon: "💼", badge: counts.jobs },
+    { id: "documents", label: "Job Documents", icon: "📁" },
     { id: "applications", label: "Applications", icon: "👥", badge: counts.applications },
     { id: "accommodations", label: "Accommodations", icon: "♿", badge: counts.accommodations },
     { id: "accessibility", label: "Accessibility Profile", icon: "🏛️" },

@@ -24,35 +24,60 @@ function ApplicationsDashboard({ selectedJobId }) {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
-    loadJobs();
+    let ignore = false;
+    async function fetchJobs() {
+      try {
+        const data = await employerService.getJobs();
+        if (!ignore) {
+          setJobs(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        // Ignore job loading failure
+      }
+    }
+    fetchJobs();
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   useEffect(() => {
-    loadApplications();
+    let ignore = false;
+    async function fetchApplications() {
+      try {
+        const params = {};
+        if (filterStatus) params.status = filterStatus;
+        if (filterJobId) params.jobId = filterJobId;
+        const data = await employerService.getApplications(params);
+        if (!ignore) {
+          setApplications(Array.isArray(data) ? data : []);
+          setError("");
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(err?.message || "Failed to load candidate applications.");
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    }
+    fetchApplications();
+    return () => {
+      ignore = true;
+    };
   }, [filterStatus, filterJobId]);
 
-  async function loadJobs() {
+  async function handleSelectApp(app) {
+    setSelectedApp(app);
     try {
-      const data = await employerService.getJobs();
-      setJobs(Array.isArray(data) ? data : []);
+      const freshDetail = await employerService.getApplication(app.id);
+      if (freshDetail) {
+        setSelectedApp(freshDetail);
+      }
     } catch {
-      // Ignore job loading failure
-    }
-  }
-
-  async function loadApplications() {
-    setIsLoading(true);
-    setError("");
-    try {
-      const params = {};
-      if (filterStatus) params.status = filterStatus;
-      if (filterJobId) params.jobId = filterJobId;
-      const data = await employerService.getApplications(params);
-      setApplications(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(err?.message || "Failed to load candidate applications.");
-    } finally {
-      setIsLoading(false);
+      // Fallback to list item data
     }
   }
 
@@ -173,7 +198,7 @@ function ApplicationsDashboard({ selectedJobId }) {
                   <div
                     key={app.id}
                     className="dashboard-card"
-                    onClick={() => setSelectedApp(app)}
+                    onClick={() => handleSelectApp(app)}
                     style={{
                       cursor: "pointer",
                       border: isSelected ? "2px solid var(--color-primary, #0284c7)" : "1px solid #e2e8f0",

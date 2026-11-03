@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session
 from ..models.job_posting import JobPosting
 from ..models.job_application import JobApplication
 from ..models.accommodation_request import AccommodationRequest
-from ..schemas.job import JobCreate, JobUpdate, JobResponse
+from ..schemas.job import CapabilityItem, JobCreate, JobUpdate, JobResponse
 from app.models.employer_profile import EmployerProfile
+from app.models.employer_accessibility_capability import EmployerAccessibilityCapability
 
 
 def _to_job_response(job: JobPosting, db: Session) -> JobResponse:
@@ -21,6 +22,22 @@ def _to_job_response(job: JobPosting, db: Session) -> JobResponse:
     ) or 0
     company_name = job.employer.company_name if job.employer else None
 
+    capabilities_records = db.scalars(
+        select(EmployerAccessibilityCapability).where(
+            EmployerAccessibilityCapability.employer_profile_id == job.employer_profile_id
+        )
+    ).all()
+    capabilities = [
+        CapabilityItem(
+            id=c.id,
+            category=c.category,
+            capability=c.capability,
+            status=c.status.value if hasattr(c.status, "value") else str(c.status),
+            details=c.details,
+        )
+        for c in capabilities_records
+    ]
+
     return JobResponse(
         id=job.id,
         employer_profile_id=job.employer_profile_id,
@@ -35,6 +52,7 @@ def _to_job_response(job: JobPosting, db: Session) -> JobResponse:
         is_active=job.is_active,
         applications_count=app_count,
         accommodation_requests_count=acc_count,
+        accessibility_capabilities=capabilities,
         created_at=job.created_at,
         updated_at=job.updated_at,
     )

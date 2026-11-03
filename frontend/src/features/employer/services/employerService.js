@@ -127,6 +127,33 @@ export const employerService = {
     return apiClient.get("/api/v1/employers/me/job-documents", { requiresAuth: true });
   },
 
+  async getJobDocument(id) {
+    return apiClient.get(`/api/v1/employers/me/job-documents/${id}`, { requiresAuth: true });
+  },
+
+  async uploadJobDocument(file) {
+    if (!file) throw new Error("Please select a job description document to upload.");
+    const validExtensions = [".pdf", ".docx"];
+    const fileName = file.name.toLowerCase();
+    const hasValidExt = validExtensions.some((ext) => fileName.endsWith(ext));
+    if (!hasValidExt) {
+      throw new Error("Unsupported format. Only PDF and DOCX files are accepted.");
+    }
+    const maxBytes = 10 * 1024 * 1024; // 10MB backend MAX_UPLOAD_SIZE_BYTES
+    if (file.size > maxBytes) {
+      throw new Error("File size exceeds maximum limit of 10MB.");
+    }
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiClient.post("/api/v1/employers/me/job-documents", formData, { requiresAuth: true });
+  },
+
+  async downloadJobDocument(id) {
+    return apiClient.download(`/api/v1/employers/me/job-documents/${id}/download`, {
+      requiresAuth: true,
+    });
+  },
+
   async deleteJobDocument(id) {
     return apiClient.delete(`/api/v1/employers/me/job-documents/${id}`, { requiresAuth: true });
   },

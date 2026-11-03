@@ -21,11 +21,19 @@ describe("Candidate API Services Integration (Phase 2.2)", () => {
     assert.equal(typeof candidateService.updateAccessibilityPreference, "function");
     assert.equal(typeof candidateService.deleteAccessibilityPreference, "function");
 
-    // Preserved declaration stubs
-    assert.equal(candidateService.isDeclarationSupported, false);
+    // Declaration endpoint is now live (isDeclarationSupported=true since backend router was mounted)
+    assert.equal(candidateService.isDeclarationSupported, true);
     assert.equal(typeof candidateService.saveDeclaration, "function");
     assert.equal(typeof candidateService.getDeclaration, "function");
     assert.equal(typeof candidateService.withdrawDeclaration, "function");
+
+    // Job discovery methods (Phase: Candidate Job Workflows)
+    assert.equal(typeof candidateService.getJobs, "function");
+    assert.equal(typeof candidateService.getJob, "function");
+    assert.equal(typeof candidateService.applyForJob, "function");
+    assert.equal(typeof candidateService.getMyApplications, "function");
+    assert.equal(typeof candidateService.requestAccommodation, "function");
+    assert.equal(typeof candidateService.getMyAccommodations, "function");
   });
 
   it("validates resume upload files client-side before sending", async () => {

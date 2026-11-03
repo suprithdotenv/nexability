@@ -54,16 +54,24 @@ function JobManager({ onSelectJobForApplications }) {
     setIsModalOpen(true);
   }
 
-  function handleOpenEdit(job) {
+  async function handleOpenEdit(job) {
     setEditingJobId(job.id);
+    let targetJob = job;
+    try {
+      const freshJob = await employerService.getJob(job.id);
+      if (freshJob) targetJob = freshJob;
+    } catch {
+      // Fallback to table data
+    }
+
     setFormData({
-      title: job.title || "",
-      description: job.description || "",
-      responsibilities: job.responsibilities || "",
-      requirements: job.requirements || "",
-      location: job.location || "",
-      work_mode: job.work_mode || "Hybrid",
-      status: job.status || "ACTIVE",
+      title: targetJob.title || "",
+      description: targetJob.description || "",
+      responsibilities: targetJob.responsibilities || "",
+      requirements: targetJob.requirements || "",
+      location: targetJob.location || "",
+      work_mode: targetJob.work_mode || "Hybrid",
+      status: targetJob.status || "ACTIVE",
     });
     setError("");
     setSuccessMessage("");

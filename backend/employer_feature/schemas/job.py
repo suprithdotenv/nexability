@@ -29,6 +29,16 @@ class JobUpdate(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class CapabilityItem(BaseModel):
+    id: UUID
+    category: str
+    capability: str
+    status: str
+    details: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class JobResponse(BaseModel):
     id: UUID
     employer_profile_id: UUID
@@ -43,6 +53,7 @@ class JobResponse(BaseModel):
     is_active: bool
     applications_count: int = 0
     accommodation_requests_count: int = 0
+    accessibility_capabilities: list[CapabilityItem] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 

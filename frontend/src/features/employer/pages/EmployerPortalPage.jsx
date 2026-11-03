@@ -4,6 +4,7 @@ import employerService from "../services/employerService.js";
 import EmployerNavigation from "../components/EmployerNavigation.jsx";
 import EmployerOverview from "../components/EmployerOverview.jsx";
 import JobManager from "../components/JobManager.jsx";
+import JobDocumentManager from "../components/JobDocumentManager.jsx";
 import ApplicationsDashboard from "../components/ApplicationsDashboard.jsx";
 import AccommodationInbox from "../components/AccommodationInbox.jsx";
 import EmployerAccessibilityManager from "../components/EmployerAccessibilityManager.jsx";
@@ -21,25 +22,31 @@ function EmployerPortalPage() {
   });
 
   useEffect(() => {
-    loadProfileAndCounts();
-  }, []);
-
-  async function loadProfileAndCounts() {
-    try {
-      const data = await employerService.getDashboard();
-      if (data?.profile) setProfile(data.profile);
-      if (data?.stats) {
-        setCounts({
-          jobs: data.stats.active_jobs || 0,
-          applications: data.stats.pending_applications || 0,
-          accommodations: data.stats.pending_accommodations || 0,
-        });
+    let ignore = false;
+    async function fetchCounts() {
+      try {
+        const data = await employerService.getDashboard();
+        if (!ignore) {
+          if (data?.profile) setProfile(data.profile);
+          if (data?.stats) {
+            setCounts({
+              jobs: data.stats.active_jobs || 0,
+              applications: data.stats.pending_applications || 0,
+              accommodations: data.stats.pending_accommodations || 0,
+            });
+          }
+        }
+      } catch {
+        if (!ignore && user) {
+          setProfile(user);
+        }
       }
-    } catch {
-      // Fallback to auth context profile
-      if (user) setProfile(user);
     }
-  }
+    fetchCounts();
+    return () => {
+      ignore = true;
+    };
+  }, [user]);
 
   function handleSelectJobForApplications(jobId) {
     setSelectedJobForApps(jobId);
@@ -83,6 +90,10 @@ function EmployerPortalPage() {
 
           {activeTab === "jobs" && (
             <JobManager onSelectJobForApplications={handleSelectJobForApplications} />
+          )}
+
+          {activeTab === "documents" && (
+            <JobDocumentManager />
           )}
 
           {activeTab === "applications" && (

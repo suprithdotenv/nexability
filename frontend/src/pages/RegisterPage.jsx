@@ -559,9 +559,6 @@ function RegisterPage() {
               Welcome, <strong>{registeredUser?.full_name || fullName}</strong>! Your
               account has been registered as <em>{role}</em>.
             </p>
-            {registeredUser?.verification_status && (
-              <p>Status: {registeredUser.verification_status}</p>
-            )}
 
             {role === "candidate" && (
               <div className="candidate-onboarding-summary">

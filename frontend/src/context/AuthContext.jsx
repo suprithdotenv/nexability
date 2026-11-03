@@ -90,6 +90,25 @@ export function AuthProvider({ children }) {
   }
 
   /**
+   * Authenticate user with Google OAuth ID token
+   */
+  async function loginWithGoogle(credential) {
+    setIsLoading(true);
+    setAuthError(null);
+    try {
+      const { user: userProfile } = await authService.loginWithGoogle(credential);
+      setUser(userProfile);
+      return userProfile;
+    } catch (err) {
+      setUser(null);
+      setAuthError(err.message || "Google sign-in failed");
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  /**
    * Terminate user session
    * Calls logout endpoint, wipes in-memory credentials, and clears application state.
    */
@@ -113,6 +132,7 @@ export function AuthProvider({ children }) {
     isLoading,
     authError,
     login,
+    loginWithGoogle,
     logout,
     sendOtp: (email, purpose) => authService.sendOtp(email, purpose),
     verifyOtp: (email, purpose, otp) => authService.verifyOtp(email, purpose, otp),

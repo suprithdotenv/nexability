@@ -140,41 +140,17 @@ describe("ProtectedRoute Guard Verification", () => {
 // Test Suite: Disability Declaration Backend Safety
 // -------------------------------------------------------------
 describe("Candidate Declaration Safety & 404 Prevention", () => {
-  it("prevents 404 network requests when isDeclarationSupported is false", async () => {
+  it("declaration endpoint is now active (isDeclarationSupported=true, backend router mounted)", async () => {
     const { candidateService } = await import("../src/api/candidate.js");
 
-    assert.equal(candidateService.isDeclarationSupported, false);
+    // Since the backend declaration router was mounted in backend/app/main.py,
+    // isDeclarationSupported is now true and methods make real API calls.
+    assert.equal(candidateService.isDeclarationSupported, true);
 
-    // getDeclaration should return null without firing an HTTP fetch
-    const declaration = await candidateService.getDeclaration();
-    assert.equal(declaration, null);
-
-    // saveDeclaration and withdrawDeclaration should reject with descriptive ApiError
-    await assert.rejects(
-      async () => {
-        await candidateService.saveDeclaration({ accepted: true });
-      },
-      (err) => {
-        return (
-          err.name === "ApiError" &&
-          err.status === 404 &&
-          err.message.includes("awaiting backend deployment")
-        );
-      }
-    );
-
-    await assert.rejects(
-      async () => {
-        await candidateService.withdrawDeclaration();
-      },
-      (err) => {
-        return (
-          err.name === "ApiError" &&
-          err.status === 404 &&
-          err.message.includes("awaiting backend deployment")
-        );
-      }
-    );
+    // All declaration methods should be functions (they now call real endpoints)
+    assert.equal(typeof candidateService.getDeclaration, "function");
+    assert.equal(typeof candidateService.saveDeclaration, "function");
+    assert.equal(typeof candidateService.withdrawDeclaration, "function");
   });
 });
 

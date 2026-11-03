@@ -9,14 +9,14 @@
  * - Voluntary declaration stubs guarded for Phase 2.1
  */
 
-import { apiClient, ApiError } from "./client.js";
+import { apiClient } from "./client.js";
 
 export const candidateService = {
   /**
    * Deployment status of the voluntary disability self-declaration endpoint.
-   * Currently FALSE because /candidates/me/declaration is awaiting backend router deployment.
+   * Enabled: /api/v1/candidates/me/declaration is mounted and supported by backend router.
    */
-  isDeclarationSupported: false,
+  isDeclarationSupported: true,
 
   // -------------------------------------------------------------
   // Candidate Profile Endpoints
@@ -208,23 +208,16 @@ export const candidateService = {
   },
 
   // -------------------------------------------------------------
-  // Disability Declaration (Preserved Phase 2.1 Stubs)
+  // Disability Declaration
   // -------------------------------------------------------------
 
   /**
    * Save voluntary disability declaration
-   * Endpoint: PUT /candidates/me/declaration
-   * Note: Awaiting backend deployment.
+   * Endpoint: PUT /api/v1/candidates/me/declaration
    */
   async saveDeclaration({ accepted = true, declaration_version = "v1" } = {}) {
-    if (!this.isDeclarationSupported) {
-      throw new ApiError(
-        "Candidate declaration endpoint (/candidates/me/declaration) is awaiting backend deployment.",
-        404
-      );
-    }
     return apiClient.put(
-      "/candidates/me/declaration",
+      "/api/v1/candidates/me/declaration",
       { accepted, declaration_version },
       { requiresAuth: true }
     );
@@ -232,29 +225,100 @@ export const candidateService = {
 
   /**
    * Retrieve current disability declaration status
-   * Endpoint: GET /candidates/me/declaration
-   * Note: Returns null safely when unsupported without making a doomed 404 network call.
+   * Endpoint: GET /api/v1/candidates/me/declaration
    */
   async getDeclaration() {
-    if (!this.isDeclarationSupported) {
-      return null;
+    try {
+      return await apiClient.get("/api/v1/candidates/me/declaration", { requiresAuth: true });
+    } catch (err) {
+      if (err.status === 404) return null;
+      throw err;
     }
-    return apiClient.get("/candidates/me/declaration", { requiresAuth: true });
   },
 
   /**
    * Withdraw voluntary disability declaration
-   * Endpoint: DELETE /candidates/me/declaration
-   * Note: Awaiting backend deployment.
+   * Endpoint: DELETE /api/v1/candidates/me/declaration
    */
   async withdrawDeclaration() {
-    if (!this.isDeclarationSupported) {
-      throw new ApiError(
-        "Candidate declaration endpoint (/candidates/me/declaration) is awaiting backend deployment.",
-        404
-      );
+    return apiClient.delete("/api/v1/candidates/me/declaration", { requiresAuth: true });
+  },
+
+  // -------------------------------------------------------------
+  // Public & Candidate Job Discovery
+  // -------------------------------------------------------------
+
+  /**
+   * List available jobs publicly or with candidate profile context
+   * Endpoint: GET /api/v1/jobs
+   */
+  async getJobs() {
+    return apiClient.get("/api/v1/jobs");
+  },
+
+  /**
+   * Retrieve detailed public job listing
+   * Endpoint: GET /api/v1/jobs/{job_id}
+   */
+  async getJob(jobId) {
+    if (!jobId) throw new Error("Job ID is required.");
+    return apiClient.get(`/api/v1/jobs/${jobId}`);
+  },
+
+  // -------------------------------------------------------------
+  // Candidate Job Applications
+  // -------------------------------------------------------------
+
+  /**
+   * Apply for a specific job listing
+   * Endpoint: POST /api/v1/candidates/me/jobs/{job_id}/apply
+   */
+  async applyForJob(jobId, { cover_note = null } = {}) {
+    if (!jobId) throw new Error("Job ID is required to submit application.");
+    return apiClient.post(
+      `/api/v1/candidates/me/jobs/${jobId}/apply`,
+      { cover_note: cover_note && cover_note.trim() ? cover_note.trim() : null },
+      { requiresAuth: true }
+    );
+  },
+
+  /**
+   * List candidate's submitted job applications
+   * Endpoint: GET /api/v1/candidates/me/applications
+   */
+  async getMyApplications() {
+    return apiClient.get("/api/v1/candidates/me/applications", { requiresAuth: true });
+  },
+
+  // -------------------------------------------------------------
+  // Candidate Accommodation Requests
+  // -------------------------------------------------------------
+
+  /**
+   * Request workplace / interview accommodation for a job
+   * Endpoint: POST /api/v1/candidates/me/jobs/{job_id}/accommodations
+   */
+  async requestAccommodation(jobId, { facility, description = null } = {}) {
+    if (!jobId) throw new Error("Job ID is required to request accommodation.");
+    if (!facility || !facility.trim()) {
+      throw new Error("Facility or accommodation name is required.");
     }
-    return apiClient.delete("/candidates/me/declaration", { requiresAuth: true });
+    return apiClient.post(
+      `/api/v1/candidates/me/jobs/${jobId}/accommodations`,
+      {
+        facility: facility.trim(),
+        description: description && description.trim() ? description.trim() : null,
+      },
+      { requiresAuth: true }
+    );
+  },
+
+  /**
+   * List candidate's submitted accommodation requests
+   * Endpoint: GET /api/v1/candidates/me/accommodations
+   */
+  async getMyAccommodations() {
+    return apiClient.get("/api/v1/candidates/me/accommodations", { requiresAuth: true });
   },
 };
 

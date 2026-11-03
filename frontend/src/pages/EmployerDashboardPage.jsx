@@ -3,11 +3,6 @@ import { useAuth } from "../context/useAuth.js";
 
 function EmployerDashboardPage() {
   const { user, logout } = useAuth();
-  const verificationStatus = (user?.verification_status || "PENDING").toUpperCase();
-
-  const isVerified = verificationStatus === "VERIFIED";
-  const isPending = verificationStatus === "PENDING";
-  const isRejected = verificationStatus === "REJECTED";
 
   return (
     <main id="main-content" className="dashboard-main" tabIndex="-1">
@@ -22,52 +17,14 @@ function EmployerDashboardPage() {
             </p>
           </div>
           <div className="dashboard-actions">
+            <Link className="btn btn-secondary" to="/employer/portal">
+              Open Full Portal
+            </Link>
             <button className="btn btn-primary" type="button" onClick={logout}>
               Sign Out
             </button>
           </div>
         </header>
-
-        {/* Organization Verification Banner */}
-        <section
-          className={`verification-banner ${
-            isVerified
-              ? "verification-verified"
-              : isRejected
-                ? "verification-rejected"
-                : "verification-pending"
-          }`}
-          role="status"
-          aria-live="polite"
-          aria-labelledby="verification-title"
-        >
-          <div className="verification-badge-row">
-            <span
-              className={`status-badge ${
-                isVerified
-                  ? "status-active"
-                  : isRejected
-                    ? "status-error"
-                    : "status-warning"
-              }`}
-            >
-              Status: {verificationStatus}
-            </span>
-          </div>
-          <h2 id="verification-title" className="verification-heading">
-            {isVerified && "Organization Verified & Approved"}
-            {isPending && "Organization Verification Pending Approval"}
-            {isRejected && "Organization Verification Requires Attention"}
-          </h2>
-          <p className="verification-text">
-            {isVerified &&
-              "Your organization is fully verified. You can publish accessible job postings, define accessibility capability benchmarks, and connect with candidate talent."}
-            {isPending &&
-              `Your corporate email domain (${user?.email_domain || "on file"}) is currently being reviewed by the NexAbility team. Standard recruitment features will unlock automatically upon approval.`}
-            {isRejected &&
-              "Your company verification could not be completed with the provided corporate credentials. Please contact our support team at support@nexability.org."}
-          </p>
-        </section>
 
         {/* Dashboard Grid */}
         <div className="dashboard-grid">
@@ -98,6 +55,11 @@ function EmployerDashboardPage() {
                 <span className="detail-value">{user?.website || "Not provided"}</span>
               </div>
             </div>
+            <div className="card-footer-actions" style={{ marginTop: "1rem" }}>
+              <Link className="btn btn-secondary" to="/employer/portal">
+                Edit Company Profile
+              </Link>
+            </div>
           </section>
 
           {/* Card 2: Workplace Accessibility Capabilities */}
@@ -115,27 +77,25 @@ function EmployerDashboardPage() {
               <li>Fully remote and hybrid schedule flexibility</li>
               <li>Screen-reader compatible digital toolsets</li>
             </ul>
+            <div className="card-footer-actions" style={{ marginTop: "1rem" }}>
+              <Link className="btn btn-secondary" to="/employer/portal">
+                Manage Accessibility Profile
+              </Link>
+            </div>
           </section>
 
           {/* Card 3: Job Descriptions & Open Positions */}
           <section className="dashboard-card" aria-labelledby="card-job-documents">
             <h2 id="card-job-documents" className="card-title">
-              Job Postings &amp; Documents
+              Job Postings &amp; Recruitment
             </h2>
             <p className="card-description">
-              Upload job descriptions for automated accessibility analysis and bias screening
-              against universal hiring standards.
+              Publish accessible job listings with transparent accommodation parameters, track applicants, and manage recruitment.
             </p>
             <div className="card-footer-actions">
-              {isVerified ? (
-                <button type="button" className="btn btn-primary" disabled>
-                  Manage Job Documents
-                </button>
-              ) : (
-                <p className="field-hint">
-                  Job posting activates once organization verification status is VERIFIED.
-                </p>
-              )}
+              <Link className="btn btn-primary" to="/employer/portal">
+                Manage Job Postings
+              </Link>
             </div>
           </section>
 
@@ -161,4 +121,3 @@ function EmployerDashboardPage() {
 }
 
 export default EmployerDashboardPage;
-

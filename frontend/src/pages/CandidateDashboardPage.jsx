@@ -5,13 +5,15 @@ import { useAuth } from "../context/useAuth.js";
 import CandidateProfileEditor from "../components/CandidateProfileEditor.jsx";
 import ResumeManager from "../components/ResumeManager.jsx";
 import AccessibilityPreferencesManager from "../components/AccessibilityPreferencesManager.jsx";
+import { MyApplications } from "../features/candidate/components/MyApplications.jsx";
+import { MyAccommodations } from "../features/candidate/components/MyAccommodations.jsx";
 
 function CandidateDashboardPage() {
   const { user, logout } = useAuth();
   const [hasDeclaration, setHasDeclaration] = useState(false);
   const [isLoadingDeclaration, setIsLoadingDeclaration] = useState(true);
 
-  // Load declaration status if supported (guards against 404s when endpoint not deployed)
+  // Load declaration status
   useEffect(() => {
     let isMounted = true;
     async function loadDeclaration() {
@@ -29,7 +31,7 @@ function CandidateDashboardPage() {
           setHasDeclaration(true);
         }
       } catch {
-        // Endpoint may be pending deployment or empty
+        // Declaration may not yet exist for this candidate – not an error
       } finally {
         if (isMounted) {
           setIsLoadingDeclaration(false);
@@ -134,9 +136,8 @@ function CandidateDashboardPage() {
               </span>
             </div>
             <p className="card-description">
-              Your voluntary disability declaration is strictly optional, protected by privacy
-              safeguards, and requires zero medical diagnosis paperwork. This feature is awaiting
-              backend API endpoint deployment.
+              Your voluntary disability declaration is strictly optional and protected by privacy
+              safeguards. No medical diagnosis paperwork is ever required.
             </p>
             <div className="card-footer-actions">
               <Link className="btn btn-secondary" to="/candidate/settings">
@@ -151,14 +152,36 @@ function CandidateDashboardPage() {
               Inclusive Job Matches
             </h2>
             <p className="card-description">
-              Discover opportunities with verified employers who prioritize accessible workplaces,
+              Discover opportunities with verified employers who prioritise accessible workplaces,
               universal design, and neurodivergent-friendly cultures.
             </p>
             <div className="card-footer-actions">
-              <Link className="btn btn-primary" to="/">
+              <Link className="btn btn-primary" to="/jobs">
                 Explore Open Positions
               </Link>
             </div>
+          </section>
+
+          {/* Card 6: My Job Applications */}
+          <section
+            className="dashboard-card dashboard-card-wide"
+            aria-labelledby="card-applications-title"
+          >
+            <h2 id="card-applications-title" className="card-title" style={{ marginBottom: "1rem" }}>
+              My Job Applications
+            </h2>
+            <MyApplications />
+          </section>
+
+          {/* Card 7: My Accommodation Requests */}
+          <section
+            className="dashboard-card dashboard-card-wide"
+            aria-labelledby="card-my-accommodations-title"
+          >
+            <h2 id="card-my-accommodations-title" className="card-title" style={{ marginBottom: "1rem" }}>
+              My Accommodation Requests
+            </h2>
+            <MyAccommodations />
           </section>
         </div>
       </div>

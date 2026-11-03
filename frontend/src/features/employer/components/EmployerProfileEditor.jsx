@@ -13,11 +13,6 @@ function EmployerProfileEditor({ profile, onProfileUpdated }) {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  const verificationStatus = (profile?.verification_status || "PENDING").toUpperCase();
-  const isVerified = verificationStatus === "VERIFIED";
-  const isPending = verificationStatus === "PENDING";
-  const isRejected = verificationStatus === "REJECTED";
-
   function handleChange(e) {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -56,47 +51,6 @@ function EmployerProfileEditor({ profile, onProfileUpdated }) {
 
   return (
     <div className="profile-editor-container">
-      {/* Verification Status Banner */}
-      <section
-        className={`verification-banner ${
-          isVerified
-            ? "verification-verified"
-            : isRejected
-              ? "verification-rejected"
-              : "verification-pending"
-        }`}
-        role="status"
-        aria-live="polite"
-        style={{ marginBottom: "1.5rem" }}
-      >
-        <div className="verification-badge-row">
-          <span
-            className={`status-badge ${
-              isVerified
-                ? "status-active"
-                : isRejected
-                  ? "status-error"
-                  : "status-warning"
-            }`}
-          >
-            Status: {verificationStatus}
-          </span>
-        </div>
-        <h2 className="verification-heading" style={{ fontSize: "1.25rem", margin: "0.5rem 0" }}>
-          {isVerified && "Organization Verified & Approved"}
-          {isPending && "Organization Verification Pending Review"}
-          {isRejected && "Organization Verification Requires Action"}
-        </h2>
-        <p className="verification-text" style={{ fontSize: "0.925rem" }}>
-          {isVerified &&
-            "Your organization is fully verified. Your posted jobs are publicly visible with verified inclusion badges."}
-          {isPending &&
-            `Your corporate email domain (${profile?.email_domain || "on file"}) is being reviewed by the NexAbility Trust & Safety team. Job postings and applications remain fully manageable during review.`}
-          {isRejected &&
-            "Verification could not be confirmed with the provided corporate credentials. Please contact support@nexability.org with business registration documentation."}
-        </p>
-      </section>
-
       {/* Profile Form Card */}
       <section className="dashboard-card">
         <h2 className="card-title">Organization & Recruiter Details</h2>
