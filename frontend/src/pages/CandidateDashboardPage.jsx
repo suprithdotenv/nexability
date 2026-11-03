@@ -7,6 +7,7 @@ import ResumeManager from "../components/ResumeManager.jsx";
 import AccessibilityPreferencesManager from "../components/AccessibilityPreferencesManager.jsx";
 import { MyApplications } from "../features/candidate/components/MyApplications.jsx";
 import { MyAccommodations } from "../features/candidate/components/MyAccommodations.jsx";
+import { InclusiveJobMatches } from "../features/candidate/components/InclusiveJobMatches.jsx";
 
 function CandidateDashboardPage() {
   const { user, logout } = useAuth();
@@ -146,20 +147,33 @@ function CandidateDashboardPage() {
             </div>
           </section>
 
-          {/* Card 5: Career Opportunities */}
-          <section className="dashboard-card" aria-labelledby="card-jobs-title">
-            <h2 id="card-jobs-title" className="card-title">
-              Inclusive Job Matches
-            </h2>
-            <p className="card-description">
-              Discover opportunities with verified employers who prioritise accessible workplaces,
-              universal design, and neurodivergent-friendly cultures.
-            </p>
-            <div className="card-footer-actions">
-              <Link className="btn btn-primary" to="/jobs">
-                Explore Open Positions
-              </Link>
+          {/* Card 5: ML-Powered Inclusive Job Matches */}
+          <section
+            className="dashboard-card dashboard-card-wide"
+            aria-labelledby="card-jobs-title"
+          >
+            <div className="card-header-row" style={{ marginBottom: "0.5rem" }}>
+              <h2 id="card-jobs-title" className="card-title" style={{ margin: 0 }}>
+                🎯 Inclusive Job Matches
+              </h2>
+              <span
+                style={{
+                  fontSize: "0.75rem",
+                  fontWeight: "700",
+                  background: "#e0e7ff",
+                  color: "#3730a3",
+                  padding: "0.2rem 0.6rem",
+                  borderRadius: "999px",
+                }}
+              >
+                ML Powered • pgvector Dense Embeddings
+              </span>
             </div>
+            <p className="card-description" style={{ marginBottom: "1.25rem" }}>
+              Ranked strictly by professional compatibility (skills, experience, and dense semantic similarity).
+              Accessibility accommodation evaluations are presented independently and never penalize your score.
+            </p>
+            <InclusiveJobMatches />
           </section>
 
           {/* Card 6: My Job Applications */}

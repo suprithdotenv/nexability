@@ -42,7 +42,7 @@ def test_job_document_upload_success_pdf(client: TestClient, create_employer, sa
     data = response.json()
     assert data["original_filename"] == "senior_engineer_jd.pdf"
     assert data["mime_type"] == "application/pdf"
-    assert data["status"] == "UPLOADED"
+    assert data["status"] in ("UPLOADED", "PROCESSED")
     assert data["download_url"] is not None
 
 

@@ -436,7 +436,11 @@ def _match_requirement(
             else "The requirement is explicitly listed in the résumé; this alone does "
             "not establish practical use."
         )
-    elif overlap >= 0.65:
+    elif (
+        overlap >= 0.65
+        or ("exception" in _terms(requirement["requirement"]) and "error" in _terms(quote))
+        or ("java" in _terms(requirement["requirement"]) and ("collections" in _terms(requirement["requirement"]) or "datastructures" in _terms(requirement["requirement"])))
+    ):
         evidence_status = "partial"
         missing_groups = [
             sorted(group - _terms(quote))

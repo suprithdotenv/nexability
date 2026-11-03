@@ -140,6 +140,7 @@ class StorageService:
             url = f"{self.supabase_url}/storage/v1/object/{bucket}/{storage_path}"
             headers = {
                 "apikey": self.service_key,
+                "Authorization": f"Bearer {self.service_key}",
                 "Content-Type": mime_type,
             }
             with httpx.Client(timeout=30.0) as client:
@@ -170,6 +171,7 @@ class StorageService:
             url = f"{self.supabase_url}/storage/v1/object/sign/{bucket}/{storage_path}"
             headers = {
                 "apikey": self.service_key,
+                "Authorization": f"Bearer {self.service_key}",
                 "Content-Type": "application/json",
             }
             with httpx.Client(timeout=10.0) as client:
@@ -193,9 +195,10 @@ class StorageService:
         Download the original file content from private storage.
         """
         if self.is_supabase_configured:
-            url = f"{self.supabase_url}/storage/v1/object/authenticated/{bucket}/{storage_path}"
+            url = f"{self.supabase_url}/storage/v1/object/{bucket}/{storage_path}"
             headers = {
                 "apikey": self.service_key,
+                "Authorization": f"Bearer {self.service_key}",
             }
             with httpx.Client(timeout=30.0) as client:
                 response = client.get(url, headers=headers)
@@ -219,6 +222,7 @@ class StorageService:
             url = f"{self.supabase_url}/storage/v1/object/{bucket}/{storage_path}"
             headers = {
                 "apikey": self.service_key,
+                "Authorization": f"Bearer {self.service_key}",
             }
             with httpx.Client(timeout=10.0) as client:
                 response = client.delete(url, headers=headers)

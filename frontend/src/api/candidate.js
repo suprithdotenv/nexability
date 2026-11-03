@@ -245,8 +245,28 @@ export const candidateService = {
   },
 
   // -------------------------------------------------------------
-  // Public & Candidate Job Discovery
+  // Public & Candidate Job Discovery & ML Matching
   // -------------------------------------------------------------
+
+  /**
+   * Retrieve ranked job matches for the authenticated candidate
+   * Endpoint: GET /api/v1/candidates/me/matches
+   * Query params: force_reprocess (bool), min_threshold (float)
+   * Returns: CandidateMatchResponse
+   */
+  async getMatches({ forceReprocess = false, minThreshold = 60.0 } = {}) {
+    const params = new URLSearchParams();
+    if (forceReprocess) {
+      params.append("force_reprocess", "true");
+    }
+    if (minThreshold !== undefined && minThreshold !== null) {
+      params.append("min_threshold", String(minThreshold));
+    }
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return apiClient.get(`/api/v1/candidates/me/matches${query}`, {
+      requiresAuth: true,
+    });
+  },
 
   /**
    * List available jobs publicly or with candidate profile context

@@ -29,23 +29,6 @@ from app.automated_pipeline.models import CandidateResumeChunk, JobDocumentChunk
 logger = logging.getLogger("automated_pipeline.processor")
 
 
-def _find_local_document(filename: str) -> bytes | None:
-    """Fallback to search known local test directories when Supabase object is not found."""
-    search_dirs = [
-        Path(r"C:\Users\Anushka\Downloads"),
-        Path(r"C:\Users\Anushka\OneDrive\Documents\NexAbility_Synthetic_Resume_Test_Set_20"),
-        Path(r"C:\Users\Anushka\.vscode\ResumeMatcher\resume_matchmaker_ml\data\job_descriptions"),
-    ]
-    for sdir in search_dirs:
-        if not sdir.exists():
-            continue
-        direct = sdir / filename
-        if direct.exists():
-            return direct.read_bytes()
-        for f in sdir.glob("*"):
-            if f.name.lower() == filename.lower():
-                return f.read_bytes()
-    return None
 
 
 def process_candidate_resume(
@@ -75,26 +58,10 @@ def process_candidate_resume(
         # 1. Download bytes if not provided
         if content is None:
             logger.info("Downloading resume %s from Supabase storage...", resume_id)
-            try:
-                content = storage_service.download_file(
-                    bucket=settings.SUPABASE_STORAGE_BUCKET_RESUMES,
-                    storage_path=resume.storage_path,
-                )
-            except Exception as e:
-                logger.warning("Supabase download failed for resume %s (%s). Trying local fallback...", resume_id, e)
-                content = _find_local_document(resume.original_filename)
-                if not content:
-                    raise
-                # Re-upload to Supabase to repair storage
-                try:
-                    storage_service.upload_file(
-                        bucket=settings.SUPABASE_STORAGE_BUCKET_RESUMES,
-                        storage_path=resume.storage_path,
-                        content=content,
-                        mime_type=resume.mime_type,
-                    )
-                except Exception:
-                    pass
+            content = storage_service.download_file(
+                bucket=settings.SUPABASE_STORAGE_BUCKET_RESUMES,
+                storage_path=resume.storage_path,
+            )
 
         if not content:
             raise ValueError("Empty resume document content.")
@@ -221,26 +188,10 @@ def process_job_document(
         # 1. Download bytes if not provided
         if content is None:
             logger.info("Downloading job document %s from Supabase storage...", job_document_id)
-            try:
-                content = storage_service.download_file(
-                    bucket=settings.SUPABASE_STORAGE_BUCKET_JOB_DOCS,
-                    storage_path=doc.storage_path,
-                )
-            except Exception as e:
-                logger.warning("Supabase download failed for job %s (%s). Trying local fallback...", job_document_id, e)
-                content = _find_local_document(doc.original_filename)
-                if not content:
-                    raise
-                # Re-upload to Supabase to repair storage
-                try:
-                    storage_service.upload_file(
-                        bucket=settings.SUPABASE_STORAGE_BUCKET_JOB_DOCS,
-                        storage_path=doc.storage_path,
-                        content=content,
-                        mime_type=doc.mime_type,
-                    )
-                except Exception:
-                    pass
+            content = storage_service.download_file(
+                bucket=settings.SUPABASE_STORAGE_BUCKET_JOB_DOCS,
+                storage_path=doc.storage_path,
+            )
 
         if not content:
             raise ValueError("Empty job document content.")

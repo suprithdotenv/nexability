@@ -98,7 +98,7 @@ def _require_service_key(
     x_internal_service_key: str | None = Header(None, alias="X-Internal-Service-Key"),
 ) -> None:
     configured_key = _get_service_key()
-    if configured_key and x_internal_service_key != configured_key:
+    if not configured_key or not x_internal_service_key or x_internal_service_key != configured_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or missing X-Internal-Service-Key.",
@@ -235,6 +235,12 @@ def _process_and_profile_resume(
     try:
         document_bytes = client.get_resume_content(resume_id)
     except Exception as exc:
+        err_msg = str(exc)
+        if "404" in err_msg or "not found" in err_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Active résumé binary not found in storage: {exc}",
+            ) from exc
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Could not download résumé: {exc}",
@@ -315,14 +321,10 @@ def _get_employer_accessibility(
     client: InternalMLClient,
     employer_id: str,
 ) -> dict[str, Any]:
-    if employer_id in _employer_accessibility_cache:
-        return _employer_accessibility_cache[employer_id]
     try:
-        employer_profile = client.get_employer_accessibility_profile(employer_id)
+        return client.get_employer_accessibility_profile(employer_id)
     except Exception:
-        employer_profile = {"profile_completed": None, "capabilities": []}
-    _employer_accessibility_cache[employer_id] = employer_profile
-    return employer_profile
+        return {"profile_completed": None, "capabilities": []}
 
 
 # ---------------------------------------------------------------------------
@@ -338,7 +340,7 @@ def get_matches(
     x_internal_service_key: str | None = Header(None, alias="X-Internal-Service-Key"),
     x_candidate_id: str | None = Header(None, alias="X-Candidate-Id"),
     force_reprocess: bool = Query(False, description="Re-process résumé even if cached"),
-    min_threshold: float = Query(60.0, description="Minimum professional compatibility score required"),
+    min_threshold: float = Query(0.0, description="Minimum professional compatibility score required"),
 ) -> MatchResponse:
     # 1. Authorise
     _require_service_key(x_internal_service_key)
@@ -352,7 +354,7 @@ def get_matches(
     if resume_meta is None:
         return MatchResponse(
             candidate_id=str(candidate_id),
-            status="no_resume",
+            status="resume_not_processed",
             match_count=0,
             ranking_formula="Ranked strictly by professional compatibility. Accessibility evaluated separately.",
             top_matches=[],
@@ -470,7 +472,7 @@ def get_matches(
                 final_st = "AVAILABLE"
                 is_gap = False
                 details = r.get("details") or f"Officially supported by employer: {r.get('evidence') or r.get('requirement')}"
-            elif raw_st in ("ON_REQUEST", "UNVERIFIED", "UPON_REQUEST"):
+            elif raw_st in ("ON_REQUEST", "UPON_REQUEST", "ON-REQUEST"):
                 final_st = "ON_REQUEST"
                 is_gap = False
                 details = r.get("details") or f"Available upon request: {r.get('evidence') or r.get('requirement')}"

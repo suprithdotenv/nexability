@@ -63,11 +63,11 @@ def get_candidate_matches(
         default=False,
         description="Re-process the résumé even if already processed.",
     ),
-    min_threshold: float = Query(
-        default=60.0,
+    min_threshold: float | None = Query(
+        default=None,
         ge=0.0,
         le=100.0,
-        description="Minimum professional compatibility score required (default: 60.0%).",
+        description="Minimum professional compatibility score required (e.g. 60.0%).",
     ),
     profile: CandidateProfile = Depends(_get_candidate_profile),
     db: Session = Depends(get_db),
@@ -75,10 +75,11 @@ def get_candidate_matches(
     candidate_profile_id = str(profile.id)
 
     try:
+        effective_threshold = min_threshold if min_threshold is not None else 60.0
         payload = request_matches(
             candidate_profile_id,
             force_reprocess=force_reprocess,
-            min_threshold=min_threshold,
+            min_threshold=effective_threshold,
         )
     except MLServiceUnavailableError as exc:
         raise HTTPException(
@@ -91,7 +92,7 @@ def get_candidate_matches(
             detail=str(exc),
         ) from exc
 
-    if payload.get("status") == "no_resume":
+    if payload.get("status") in ("no_resume", "resume_not_processed"):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No active résumé found. Please upload a résumé before requesting matches.",
@@ -101,10 +102,16 @@ def get_candidate_matches(
     from app.models.employer_profile import EmployerProfile
     import uuid as _uuid
     raw_matches = payload.get("top_matches", [])
-    qualifying_matches = [
-        m for m in raw_matches
-        if (m.get("professional_match_score") or 0.0) >= min_threshold
-    ]
+    for m in raw_matches:
+        if isinstance(m, dict) and "professional_match_score" not in m and "scores" in m:
+            m["professional_match_score"] = (m.get("scores") or {}).get("professional_match_score", 0.0)
+    if min_threshold is not None:
+        qualifying_matches = [
+            m for m in raw_matches
+            if (m.get("professional_match_score") or 0.0) >= min_threshold
+        ]
+    else:
+        qualifying_matches = raw_matches
 
     # Enrich true company names and assign 1-based ranks
     for idx, m in enumerate(qualifying_matches, start=1):
@@ -128,7 +135,7 @@ def get_candidate_matches(
 
     payload["top_matches"] = qualifying_matches
     payload["match_count"] = len(qualifying_matches)
-    if len(qualifying_matches) == 0 and payload.get("status") not in ("no_resume", "no_jobs_available"):
+    if len(qualifying_matches) == 0 and payload.get("status") not in ("no_resume", "resume_not_processed", "no_jobs_available"):
         payload["status"] = "no_qualifying_matches"
 
     return CandidateMatchResponse(**payload)

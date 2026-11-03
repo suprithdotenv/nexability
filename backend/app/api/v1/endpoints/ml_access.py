@@ -18,7 +18,6 @@ from app.schemas.ml_access import (
     MLPendingQueueResponse,
 )
 from app.services.storage.storage_service import storage_service
-from app.automated_pipeline.processor import _find_local_document
 
 router = APIRouter()
 
@@ -118,21 +117,10 @@ def get_ml_resume_content(
             storage_path=resume.storage_path,
         )
     except Exception as exc:
-        content = _find_local_document(resume.original_filename)
-        if not content:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Could not retrieve resume from private storage: {str(exc)}",
-            ) from exc
-        try:
-            storage_service.upload_file(
-                bucket=settings.SUPABASE_STORAGE_BUCKET_RESUMES,
-                storage_path=resume.storage_path,
-                content=content,
-                mime_type=resume.mime_type,
-            )
-        except Exception:
-            pass
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Resume file not found in storage: {str(exc)}",
+        ) from exc
 
     return Response(
         content=content,
@@ -202,21 +190,10 @@ def get_ml_job_document_content(
             storage_path=job_doc.storage_path,
         )
     except Exception as exc:
-        content = _find_local_document(job_doc.original_filename)
-        if not content:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Could not retrieve job document from private storage: {str(exc)}",
-            ) from exc
-        try:
-            storage_service.upload_file(
-                bucket=settings.SUPABASE_STORAGE_BUCKET_JOB_DOCS,
-                storage_path=job_doc.storage_path,
-                content=content,
-                mime_type=job_doc.mime_type,
-            )
-        except Exception:
-            pass
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job document not found in storage: {str(exc)}",
+        ) from exc
 
     return Response(
         content=content,

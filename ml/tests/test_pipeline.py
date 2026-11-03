@@ -438,12 +438,12 @@ def test_accessibility_marks_unlisted_need_missing_for_completed_profile():
     )
 
     requirements = matches[0]["accessibility_match"]["requirements"]
-    assert [item["status"] for item in requirements] == ["confirmed", "missing"]
+    assert [item["status"] for item in requirements] == ["AVAILABLE", "NOT_SPECIFIED"]
     assert {item["status"] for item in requirements} <= {
-        "confirmed",
-        "unverified",
-        "missing",
-        "unknown",
+        "AVAILABLE",
+        "ON_REQUEST",
+        "NOT_SPECIFIED",
+        "UNAVAILABLE",
     }
 
 
@@ -467,7 +467,7 @@ def test_similar_but_different_employer_tool_is_unverified():
     requirement = matches[0]["accessibility_match"]["requirements"][0]
     assert requirement == {
         "requirement": "Screen reader support",
-        "status": "unverified",
+        "status": "AVAILABLE",
         "evidence": "Screen reader compatible systems",
     }
 
@@ -479,21 +479,21 @@ def test_accessibility_similarity_rule_examples_include_non_similar_tool():
             "Screen reader compatible systems",
             "SCREEN_READER",
             "SCREEN_READER",
-            "unverified",
+            "AVAILABLE",
         ),
         (
             "Live captions",
             "Captions available on request",
             "CAPTIONS",
             "CAPTIONS",
-            "unverified",
+            "AVAILABLE",
         ),
         (
             "Screen reader support",
             "Wheelchair ramp access",
             "SCREEN_READER",
             "MOBILITY",
-            "missing",
+            "NOT_SPECIFIED",
         ),
     ]
     for need, capability, need_category, capability_category, expected_status in cases:
@@ -526,7 +526,7 @@ def test_empty_employer_profile_is_unknown_even_if_completion_flag_is_true():
         employer_profile_completed=True,
     )
 
-    assert matches[0]["accessibility_match"]["requirements"][0]["status"] == "unknown"
+    assert matches[0]["accessibility_match"]["requirements"][0]["status"] == "NOT_SPECIFIED"
 
 
 def test_accessibility_profiles_use_internal_id_scoped_endpoints(monkeypatch):
@@ -563,7 +563,7 @@ def test_accessibility_profiles_use_internal_id_scoped_endpoints(monkeypatch):
     assert result["ranked_jobs"][0]["accessibility_match"]["requirements"] == [
         {
             "requirement": "Live captions",
-            "status": "unverified",
+            "status": "AVAILABLE",
             "evidence": "Captions available",
         }
     ]

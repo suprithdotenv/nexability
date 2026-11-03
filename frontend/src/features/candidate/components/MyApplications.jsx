@@ -46,7 +46,6 @@ export function MyApplications() {
     <div className="my-applications-section">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
         <div>
-          <h2 style={{ fontSize: "1.25rem", margin: "0 0 0.25rem" }}>My Job Applications</h2>
           <p style={{ fontSize: "0.875rem", color: "var(--color-text-muted)", margin: 0 }}>
             Track your submitted applications and hiring stages across inclusive employers.
           </p>

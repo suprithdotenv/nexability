@@ -30,6 +30,7 @@ describe("Candidate API Services Integration (Phase 2.2)", () => {
     // Job discovery methods (Phase: Candidate Job Workflows)
     assert.equal(typeof candidateService.getJobs, "function");
     assert.equal(typeof candidateService.getJob, "function");
+    assert.equal(typeof candidateService.getMatches, "function");
     assert.equal(typeof candidateService.applyForJob, "function");
     assert.equal(typeof candidateService.getMyApplications, "function");
     assert.equal(typeof candidateService.requestAccommodation, "function");

@@ -43,7 +43,6 @@ export function MyAccommodations() {
     <div className="my-accommodations-section">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
         <div>
-          <h2 style={{ fontSize: "1.25rem", margin: "0 0 0.25rem" }}>My Accommodation Requests</h2>
           <p style={{ fontSize: "0.875rem", color: "var(--color-text-muted)", margin: 0 }}>
             Track the status of your workplace &amp; interview accommodation requests and view employer responses.
           </p>

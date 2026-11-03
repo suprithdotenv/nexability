@@ -457,4 +457,4 @@ def test_accessibility_influences_ranking_score():
     assert resp.status_code == 200
     match = resp.json()["top_matches"][0]
     assert match["scores"]["accessibility_compatibility"] == 100.0
-    assert match["scores"]["ranking_score"] >= 60.0
+    assert match["scores"]["ranking_score"] == match["scores"]["professional_match_score"]
