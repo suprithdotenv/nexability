@@ -185,6 +185,7 @@ async def upload_job_document(
         try:
             from app.automated_pipeline.processor import process_job_document
             process_job_document(doc_record.id, db=db, content=content)
+            db.refresh(doc_record)
         except Exception as exc:
             import logging
             logging.getLogger("api.employers").error("Automated pipeline job processing error: %s", exc)

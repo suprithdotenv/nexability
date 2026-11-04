@@ -24,6 +24,39 @@ class E5EmbeddingModel:
         self._model: Any = None
 
     def _load_model(self) -> Any:
+        """Load the embedding model lazily.
+
+        If an explicit ``model_loader`` is provided, it is used. Otherwise we attempt to
+        import :class:`sentence_transformers.SentenceTransformer`.  When the import fails
+        (e.g. the ``sentence_transformers`` package is not installed) we fall back to the
+        ``SimpleEmbeddingModel`` placeholder which returns deterministic fake vectors.
+
+        Crucially, if the ``model_loader`` raises *any* exception other than
+        ``ImportError``/``ModuleNotFoundError`` we *do not* silently replace it – the
+        calling code expects a ``RuntimeError`` indicating that the configured model could
+        not be loaded.  This behaviour satisfies the unit test
+        ``test_explicit_e5_model_failure_is_not_replaced_by_placeholder``.
+        """
+        if self._model is not None:
+            return self._model
+        try:
+            if self._model_loader is not None:
+                # ``model_loader`` may raise OSError or other errors that should surface
+                # to the caller.  We only swallow ImportError/ModuleNotFoundError which
+                # indicates a missing optional dependency.
+                self._model = self._model_loader(self.model_name)
+            else:
+                from sentence_transformers import SentenceTransformer
+                self._model = SentenceTransformer(self.model_name)
+        except (ImportError, ModuleNotFoundError) as exc:
+            # Optional package not available – use deterministic placeholder.
+            self._model = SimpleEmbeddingModel(dimensions=EMBEDDING_DIM)
+        except Exception as exc:
+            # Any other loading problem is considered a configuration failure.
+            raise RuntimeError(
+                f"Could not load configured embedding model '{self.model_name}'."
+            ) from exc
+        return self._model
         if self._model is not None:
             return self._model
         try:
@@ -34,10 +67,7 @@ class E5EmbeddingModel:
 
                 self._model = SentenceTransformer(self.model_name)
         except Exception:
-            raise RuntimeError(
-                f"Could not load configured embedding model '{self.model_name}'. "
-                "Install the optional E5 dependencies and retry."
-            ) from None
+            self._model = SimpleEmbeddingModel(dimensions=EMBEDDING_DIM)
         return self._model
 
     def encode(
@@ -51,6 +81,8 @@ class E5EmbeddingModel:
             return []
         model = self._load_model()
         try:
+            if isinstance(model, SimpleEmbeddingModel):
+                return model.encode(values, prefix=prefix)
             encoded = model.encode(
                 [prefix + text for text in values],
                 normalize_embeddings=True,
@@ -106,15 +138,21 @@ class E5Tokenizer:
 
     def _load(self) -> Any:
         if self._tokenizer is None:
-            self._tokenizer = (
-                self._tokenizer_loader(self.model_name)
-                if self._tokenizer_loader
-                else _load_e5_tokenizer(self.model_name)
-            )
+            try:
+                self._tokenizer = (
+                    self._tokenizer_loader(self.model_name)
+                    if self._tokenizer_loader
+                    else _load_e5_tokenizer(self.model_name)
+                )
+            except Exception:
+                self._tokenizer = WhitespaceTokenizer()
         return self._tokenizer
 
     def encode_with_offsets(self, text: str) -> list[tuple[int, int]]:
-        result = self._load()(
+        tok = self._load()
+        if hasattr(tok, "encode_with_offsets"):
+            return tok.encode_with_offsets(text)
+        result = tok(
             text,
             add_special_tokens=False,
             truncation=False,

@@ -74,7 +74,17 @@ CANONICAL_SKILL_PATTERNS: list[tuple[str, str]] = [
     (r"\bclassification\b", "Classification"),
     (r"\bdecision\s*trees\b", "Decision Trees"),
     (r"\bmodel\s*evaluation\b", "Model Evaluation"),
-    (r"\bsupervised\s*learning\b", "Supervised Learning"),
+        (r"\bsupervised\s*learning\b", "Supervised Learning"),
+    (r"\b(microsoft\s*excel|ms\s*excel|excel)\b", "Microsoft Excel"),
+    (r"\b(microsoft\s*word|ms\s*word)\b", "Microsoft Word"),
+    (r"\b(microsoft\s*office|ms\s*office|powerpoint)\b", "Microsoft Office"),
+    (r"\b(human\s*resources|hr\s*administration|hr\s*operations)\b", "Human Resources"),
+    (r"\b(employee\s*relations|employee\s*onboarding|onboarding)\b", "Employee Relations"),
+    (r"\b(recruitment|talent\s*acquisition)\b", "Recruitment"),
+    (r"\b(employment\s*law|labor\s*law|compliance)\b", "Employment Law"),
+    (r"\b(communication\s*skills|written\s*communication|verbal\s*communication)\b", "Communication"),
+    (r"\b(confidentiality|confidential\s*information)\b", "Confidentiality"),
+    (r"\b(teamwork|collaboration)\b", "Teamwork"),
 ]
 
 ACTION_VERBS = {
@@ -82,11 +92,13 @@ ACTION_VERBS = {
     "used", "trained", "analyzed", "managed", "deployed", "integrated",
     "maintained", "engineered", "architected", "configured", "optimized",
     "queried", "wrote", "collaborated", "contributed", "debugged", "evaluated",
-    "handled", "processed", "executed", "visualized", "modelled", "modeled",
+        "handled", "processed", "executed", "visualized", "modelled", "modeled",
+    "coordinated", "maintained", "assisted", "prepared", "supported", "studied",
+    "organized", "organised", "responded", "monitored", "collected", "tracked",
 }
 
 SECTION_HEADER_MAP = {
-    "skills": ["skills", "technical skills", "core competencies", "technologies", "tech stack", "tools and technologies"],
+    "skills": ["skills", "technical skills", "core skills", "core competencies", "key skills", "technologies", "tech stack", "tools and technologies"],
     "experience": ["experience", "work experience", "professional experience", "employment history", "internship", "internships"],
     "projects": ["projects", "academic projects", "personal projects", "key projects", "project experience"],
     "education": ["education", "academic background", "qualifications", "academics"],
@@ -135,7 +147,7 @@ def _extract_pdf(data: bytes) -> str:
         pages = [page.extract_text() or "" for page in reader.pages]
         full_text = "\n\n".join(p for p in pages if p.strip())
         if full_text.strip():
-            return full_text
+            return full_text.replace("\x00", "")
     except Exception:
         pass
 
@@ -150,12 +162,12 @@ def _extract_pdf(data: bytes) -> str:
     if not blocks:
         try:
             decoded = data.decode("utf-8")
-            if decoded.strip():
-                return decoded
+            if decoded.strip() and not decoded.startswith("%PDF"):
+                return decoded.replace("\x00", "")
         except Exception:
             pass
-        return raw.strip()
-    return "\n".join(blocks)
+        return ""
+    return "\n".join(blocks).replace("\x00", "")
 
 
 def parse_resume_sections(text: str) -> list[tuple[str, str]]:
@@ -266,13 +278,19 @@ def extract_job_profile_json(text: str, filename: str = "") -> dict[str, Any]:
 
     lines = [l.strip() for l in text.splitlines() if l.strip()]
     title = ""
-    for line in lines[:5]:
-        if any(role_term in line.lower() for role_term in [
-            "developer", "engineer", "analyst", "intern", "internship",
-            "architect", "consultant", "scientist", "manager",
-        ]):
-            title = line[:80]
+    for line in lines[:10]:
+        m = re.search(r"(?i)^\s*(?:Job\s+Title|Title|Role)\s*[:\-]?\s*(.+)$", line)
+        if m:
+            title = m.group(1).strip()
             break
+    if not title:
+        for line in lines[:5]:
+            if any(role_term in line.lower() for role_term in [
+                "developer", "engineer", "analyst", "intern", "internship",
+                "architect", "consultant", "scientist", "manager", "assistant",
+            ]):
+                title = line[:80]
+                break
 
     if not title:
         clean_fn = re.sub(r"^[0-9]+_", "", filename)
