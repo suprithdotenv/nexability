@@ -9,13 +9,25 @@ _JOB_SECTION_HEADINGS = {
     "required skills": "required_skills",
     "requirements": "required_skills",
     "qualifications": "required_skills",
+    "basic qualifications": "required_skills",
+    "minimum qualifications": "required_skills",
     "preferred": "preferred_skills",
     "preferred skill": "preferred_skills",
     "preferred skills": "preferred_skills",
+    "desired qualifications": "preferred_skills",
+    "preferred qualifications": "preferred_skills",
     "responsibilities": "responsibilities",
+    "specific responsibilities": "responsibilities",
     "key responsibilities": "responsibilities",
+    "duties": "responsibilities",
+    "key duties": "responsibilities",
     "what you will do": "responsibilities",
     "what you ll do": "responsibilities",
+    "what skills will the intern learn": "preferred_skills",
+    "skills will the intern learn": "preferred_skills",
+    "learning outcomes": "preferred_skills",
+    "internship exposure": "domain_knowledge",
+    "functional areas": "domain_knowledge",
     "domain knowledge": "domain_knowledge",
     "education": "education",
     "education requirements": "education",
@@ -54,6 +66,13 @@ _KNOWN_SKILLS = {
     "java collections": ("java collections", "collections framework"),
     "exception handling": ("exception handling",),
     "data structures and algorithms": ("data structures and algorithms",),
+    "microsoft excel": ("microsoft excel", "excel", "ms excel"),
+    "microsoft word": ("microsoft word", "word", "ms word"),
+    "microsoft office": ("microsoft office", "ms office", "powerpoint"),
+    "communication": ("communication skills", "written communication", "verbal communication", "oral communication", "interpersonal communication"),
+    "confidentiality": ("confidentiality", "confidential information", "confidential"),
+    "human resources": ("human resources", "hr administration", "hr operations", "employee relations", "hris"),
+    "employment law": ("employment law", "labor law", "employment compliance"),
 }
 
 _BULLET_PREFIX = re.compile(r"^\s*(?:[•●▪◦○*-]|\d+[.)])\s*")
@@ -98,7 +117,9 @@ def _extract_skills(text: str, *, candidate: bool = True) -> list[str]:
             "analytical thinking", "python", "java", "sql", "c#", "aws",
             "azure", "gcp", "docker", "fastapi", "django", "react", "node",
             "spark", "pandas", "numpy", "communication", "leadership",
-            "teamwork",
+            "teamwork", "microsoft excel", "microsoft word", "excel", "word",
+            "powerpoint", "confidentiality", "human resources", "hr administration",
+            "onboarding", "recruitment", "employee relations",
         )
         return sorted(
             skill
@@ -168,7 +189,7 @@ def _parse_job_requirements(text: str) -> list[dict[str, Any]]:
         if current_text:
             original = re.sub(r"\s+", " ", current_text).strip()
             if original:
-                preferred = current_category == "preferred_skills"
+                preferred = current_category in {"preferred_skills", "responsibilities", "domain_knowledge"}
                 requirements.append(
                     {
                         "requirement": original,

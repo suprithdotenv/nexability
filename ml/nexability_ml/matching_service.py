@@ -260,7 +260,7 @@ def _process_and_profile_resume(
     )
 
     structured = result.get("structured_profile", {})
-    structured["source_text"] = result.get("safe_source_text") or ""
+    structured["source_text"] = getattr(result.get("extraction"), "text", None) or result.get("safe_source_text") or ""
     _resume_profiles_cache[resume_id] = structured
     return structured
 
